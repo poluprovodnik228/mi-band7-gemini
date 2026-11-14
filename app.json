@@ -1,0 +1,65 @@
+{
+  "configVersion": "v2",
+  "app": {
+    "appId": 1098234,
+    "appName": "Gemini Band",
+    "appType": "app",
+    "version": {
+      "code": 2,
+      "name": "1.1.0"
+    },
+    "icon": "icon.png",
+    "vender": "Community",
+    "description": "Gemini AI client with T9 keyboard for Mi Band 7"
+  },
+  "permissions": [
+    "device:os.bg_service"
+  ],
+  "runtime": {
+    "apiVersion": {
+      "compatible": "1.0.0",
+      "target": "1.0.1",
+      "minVersion": "1.0.0"
+    }
+  },
+  "targets": {
+    "band-7": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/chat",
+            "page/keyboard",
+            "page/model_select"
+          ]
+        },
+        "app-side": {
+          "path": "app-side/index"
+        }
+      },
+      "platforms": [
+        {
+          "name": "band-7",
+          "deviceSource": 252
+        },
+        {
+          "name": "band-7",
+          "deviceSource": 253
+        },
+        {
+          "name": "band-7",
+          "deviceSource": 254
+        }
+      ],
+      "designWidth": 192
+    }
+  },
+  "i18n": {
+    "en-US": {
+      "appName": "Gemini Band"
+    },
+    "ru-RU": {
+      "appName": "Gemini Band"
+    }
+  },
+  "defaultLanguage": "ru-RU"
+}
