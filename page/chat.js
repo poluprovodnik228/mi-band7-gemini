@@ -278,7 +278,7 @@ Page({
 
     // 1. Верхний бейдж модели
     const isHydrogen = globalData.selectedModel === 'hydrogen'
-    const modelLabel = (isHydrogen ? '🧠 Hydrogen' : '⚡ 3.5 Lite') +
+    const modelLabel = (isHydrogen ? '🧠 4 Hydrogen' : '⚡ 3.5 Lite') +
                        (globalData.enableReasoning ? ' + 💭' : '') + ' ⚙️'
 
     if (this.state.modelBtnWidget) {

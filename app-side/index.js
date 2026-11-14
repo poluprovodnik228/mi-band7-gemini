@@ -18,8 +18,8 @@ const MAX_BLE_TEXT_LENGTH = 1000 // Лимит буфера BLE на Mi Band 7 (
 
 // Модели Google AI Studio
 const MODELS = {
-  hydrogen: 'gemini-3.5-flash-lite',
   lite: 'gemini-3.5-flash-lite',
+  hydrogen: 'gemini-4-hydrogen',
   fallback: 'gemini-3.5-flash-lite',
   secondaryFallback: 'gemini-3.5-flash-lite'
 }

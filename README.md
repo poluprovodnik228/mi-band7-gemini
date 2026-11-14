@@ -1,93 +1,104 @@
-# 🤖 Gemini AI Client для Xiaomi Smart Band 7
+# 🤖 Gemini Band — AI Assistant for Xiaomi Smart Band 7
 
-Полноценный клиент Google Gemini для смарт-браслета **Xiaomi Smart Band 7 (Zepp OS 1.0)** с экранной побуквенной клавиатурой, поддержкой русского и английского алфавитов, переключением регистра (Caps/Shift), адаптивным размером шрифта и современным темным AMOLED-дизайном.
-
----
-
-## ✨ Возможности
-
-1. **Побуквенная клавиатура (Direct Tap):**
-   * Все **33 буквы русского алфавита** разбиты на 3 удобные страницы (3×4 крупные клавиши, 54×45 px).
-   * Английский алфавит (26 букв) + отдельная вкладка цифр и знаков (`123`).
-   * **Переключение регистра (Caps/Shift):** кнопка `[ ⇧ А ]` / `[ ⇩ а ]` для ввода строчных и заглавных букв.
-   * **Быстрые вкладки вверху:** мгновенный переход к нужной группе букв в одно касание.
-   * Отдельные клавиши для смены языка (`🌐 RU / EN`), пробела (`␣`) и удаления (`⌫`).
-   * **Smart Auto-Fit:** адаптивный размер шрифта в поле ввода (весь набранный текст всегда остается перед глазами).
-   * Тактильный виброотклик браслета на каждое касание.
-
-2. **Современный Cyberpunk/OLED интерфейс:**
-   * Контрастные карточки для вопроса (`👤 ВЫ:`) и ответа (`✨ GEMINI AI:`).
-   * Верхний бейдж активной модели и статус готовности (`🟢 Готов к вопросу` / `⏳ Gemini думает...`).
-   * Плавная прокрутка длинных ответов.
-   * Жестко зафиксированные координаты виджетов с учетом закруглений капсулы Band 7.
-
-3. **Модели ИИ:**
-   * **⚡ Gemini 3.5 Flash-Lite:** мгновенные ответы (< 0.8 сек) для фактов, дат, перевода и определений.
-   * **🧠 Hydrogen / Pro:** глубокий анализ и пошаговые рассуждения.
-   * **Тумблер Reasoning:** режим глубоких размышлений.
+A full-featured standalone Google Gemini AI client for **Xiaomi Smart Band 7 (Zepp OS 1.0)**, featuring an on-screen paginated keyboard, full Cyrillic & Latin support, Caps/Shift case toggle, adaptive font sizing, and dark OLED UI.
 
 ---
 
-## 📁 Структура проекта
+## ✨ Features
+
+* **Direct Paginated Keyboard (Single-Tap Typing):**
+  * **Russian Alphabet:** All **33 letters** distributed across 3 ergonomic pages (3×4 grid, 54×45 px keys).
+  * **English Alphabet:** 26 letters across 3 pages.
+  * **Numbers & Math Symbols (`123`):** Dedicated page for digits and arithmetic symbols.
+  * **Caps / Shift Toggle (`[ ⇧ А ]` / `[ ⇩ а ]`):** Easily switch between lowercase and uppercase letters with live visual indication.
+  * **Top Navigation Tabs:** One-tap switching between letter groups (`[а-л]`, `[м-ч]`, `[ш-я]`, `[123]`).
+  * **Smart Auto-Fit:** Adaptive font scaling ensures the text input field never clips the beginning of long queries.
+  * **Haptic Feedback:** Discrete vibration on every keypress.
+
+* **Dual AI Model Selection:**
+  * **⚡ Gemini 3.5 Flash-Lite:** Ultra-fast responses (< 0.8s) for quick facts, dates, translations, and definitions.
+  * **🧠 Gemini 4 Hydrogen:** Google's deep reasoning model for complex questions, logic, math, and code.
+  * **Reasoning Toggle (💭):** Turn extended thinking budget on or off.
+
+* **OLED Cyberpunk UI:**
+  * High-contrast cards for User Queries (`👤 YOU:`) and AI Responses (`✨ GEMINI AI:`).
+  * Curved bezel safety margins tailored to the 192×490 AMOLED pill display.
+  * Smooth layer scrolling for lengthy multi-paragraph answers.
+
+---
+
+## 📁 Project Structure
 
 ```text
 mi-band7-gemini/
-├── app.json               # Манифест приложения и роутинг экранов
-├── app.js                 # Глобальное состояние и инициализация MessageBuilder
+├── app.json               # Zepp OS application manifest and route definitions
+├── app.js                 # Global application lifecycle and MessageBuilder setup
 ├── page/
-│   ├── chat.js            # Экран диалога с Gemini AI и карточками сообщений
-│   ├── keyboard.js        # Экран побуквенной клавиатуры (RU/EN, Caps/Shift, 123)
-│   └── model_select.js    # Экран выбора модели и режима рассуждений
+│   ├── chat.js            # Main chat screen with message cards & status indicator
+│   ├── keyboard.js        # On-screen keyboard with RU/EN layouts & Caps/Shift
+│   └── model_select.js    # AI Model selector (Gemini 3.5 Flash-Lite vs Gemini 4 Hydrogen)
 ├── app-side/
-│   └── index.js           # Companion-сервис телефона (запросы к Google AI Studio / OpenRouter)
-├── shared/                # Модуль надежной связи MessageBuilder по протоколу Zepp OS
-└── assets/                # Иконки приложения под экран 192x490
+│   └── index.js           # Companion service (routes BLE requests to Google AI Studio)
+├── shared/                # MessageBuilder communication protocol implementation
+└── assets/                # App icons optimized for 192x490 screen
 ```
 
 ---
 
-## ⚙️ Настройка собственного API-ключа
+## ⚙️ Configuration & API Key
 
-1. Получите бесплатный ключ API в [Google AI Studio](https://aistudio.google.com/).
-2. Откройте файл `app-side/index.js` и укажите ваш ключ в константе `GEMINI_API_KEY`:
+1. Obtain a free API key from [Google AI Studio](https://aistudio.google.com/).
+2. Open `app-side/index.js` and set your key:
 
 ```javascript
 // app-side/index.js
-const GEMINI_API_KEY = "ВАШ_API_КЛЮЧ_GOOGLE_AI_STUDIO";
+const GEMINI_API_KEY = "YOUR_GOOGLE_AI_STUDIO_API_KEY";
 ```
 
-*(Опционально)* Если вы используете OpenRouter:
+*(Optional)* If you prefer OpenRouter:
 ```javascript
 const USE_OPENROUTER = true;
-const OPENROUTER_API_KEY = "ВАШ_OPENROUTER_KEY";
+const OPENROUTER_API_KEY = "YOUR_OPENROUTER_API_KEY";
 ```
 
 ---
 
-## 🛠️ Сборка проекта
+## 🛠️ Building from Source
 
-Для сборки используется официальный CLI Zepp OS (`@zeppos/zeus-cli`):
+Install the official Zepp OS CLI tool (`@zeppos/zeus-cli`) and build:
 
 ```bash
-# Установка зависимостей и сборка
+# Install Zeus CLI globally
 npm install -g @zeppos/zeus-cli
+
+# Build for Xiaomi Smart Band 7
 zeus build
 ```
 
-Скомпилированный установочный файл появится в папке `dist/` с расширением `.zab` (внутри которого содержится `.zpk`).
+The compiled package will be generated inside the `dist/` directory as a `.zab` bundle.
 
 ---
 
-## 📲 Установка на Xiaomi Smart Band 7
+## 📲 Installation on Xiaomi Smart Band 7
 
-1. В приложении **Zepp** на смартфоне перейдите в:
-   > **Профиль ➔ Ваше устройство (Band 7) ➔ Режим разработчика (Developer Mode)**
-2. Нажмите на **значок сканера** в правом верхнем углу.
-3. Отсканируйте QR-код приложения (полученный через `zeus preview` либо локальный HTTP-сервер).
-4. Zepp автоматически загрузит приложение на браслет через Bluetooth!
+1. In the **Zepp** mobile app on your smartphone, navigate to:
+   > **Profile ➔ Xiaomi Smart Band 7 ➔ Developer Mode**
+2. Tap the **QR Code Scanner** icon in the top right corner.
+3. Scan the installation QR code generated by `zeus preview` or serve the `.zpk` file via HTTP.
+4. Zepp will automatically push and install the application onto your band via Bluetooth.
 
 ---
 
-## 📄 Лицензия
+## 🇷🇺 Русская версия (Кратко)
 
-MIT License. Свободно для модификации и личного использования.
+* **Клиент Gemini AI для Mi Band 7** с полноэкранным вводом без Т9.
+* **33 буквы русского алфавита** на 3 страницах + английский + цифры.
+* Переключение регистра **Caps/Shift** (`[ ⇧ А ]` / `[ ⇩ а ]`).
+* Две модели: **⚡ Gemini 3.5 Flash-Lite** (быстрая) и **🧠 Gemini 4 Hydrogen** (глубокие рассуждения).
+* Бесплатный ключ настраивается в `app-side/index.js`. Сборка через `zeus build`.
+
+---
+
+## 📄 License
+
+MIT License. Open for modification and personal use.
