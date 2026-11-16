@@ -93,25 +93,25 @@ Page({
       }
     })
 
-    // 2. Две целевые модели
+    // 2. Две целевые модели (Hydrogen по умолчанию)
     const models = [
-      {
-        id: 'lite',
-        title: '⚡ 3.5 Flash-Lite',
-        tag: 'РЕКОМЕНДУЕТСЯ',
-        subtitle: 'Мгновенный ответ (<0.8с)\nФакты, перевод, поиск'
-      },
       {
         id: 'hydrogen',
         title: '🧠 4 Hydrogen',
-        tag: 'ГЛУБОКАЯ ЛОГИКА',
-        subtitle: 'Сложные задачи, код\nПошаговое мышление'
+        tag: 'ПО УМОЛЧАНИЮ',
+        subtitle: 'Глубокая логика, код\nТочные ответы Gemini 4'
+      },
+      {
+        id: 'lite',
+        title: '⚡ 3.5 Flash-Lite',
+        tag: 'БЫСТРЫЙ РЕЖИМ',
+        subtitle: 'Мгновенный ответ (<0.8с)\nФакты, перевод, поиск'
       }
     ]
 
     let startY = 114
     models.forEach((m) => {
-      const isSelected = (globalData.selectedModel || 'lite') === m.id
+      const isSelected = (globalData.selectedModel || 'hydrogen') === m.id
       const btn = hmUI.createWidget(hmUI.widget.BUTTON, {
         x: 12,
         y: startY,

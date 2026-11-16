@@ -113,16 +113,13 @@ Page({
     const inputCardY = 34
     const inputCardH = 58
 
-    hmUI.createWidget(hmUI.widget.BUTTON, {
+    hmUI.createWidget(hmUI.widget.FILL_RECT, {
       x: 14,
       y: inputCardY,
       w: 164,
       h: inputCardH,
       radius: 12,
-      text: '',
-      normal_color: 0x121722,
-      press_color: 0x121722,
-      click_func: () => {}
+      color: 0x121722
     })
 
     // Текст поля ввода внутри карточки
@@ -332,6 +329,43 @@ Page({
     this.updateKeys()
     this.updateShiftBtn()
     this.updateTextUI()
+    this.registerGestures()
+  },
+
+  registerGestures() {
+    if (typeof hmApp !== 'undefined' && hmApp.registerGestureEvent) {
+      const G_UP = (hmApp.gesture && hmApp.gesture.UP) || 3
+      const G_DOWN = (hmApp.gesture && hmApp.gesture.DOWN) || 4
+      const G_RIGHT = (hmApp.gesture && hmApp.gesture.RIGHT) || 1
+
+      hmApp.registerGestureEvent((event) => {
+        if (event === G_UP) {
+          this.hapticClick()
+          this.nextPage()
+          return true
+        } else if (event === G_DOWN) {
+          this.hapticClick()
+          this.prevPage()
+          return true
+        } else if (event === G_RIGHT) {
+          // Свайп вправо: стандартный возврат назад
+          return false
+        }
+        return true
+      })
+    }
+  },
+
+  nextPage() {
+    this.state.currentPage = (this.state.currentPage + 1) % 4
+    this.updateTabs()
+    this.updateKeys()
+  },
+
+  prevPage() {
+    this.state.currentPage = (this.state.currentPage - 1 + 4) % 4
+    this.updateTabs()
+    this.updateKeys()
   },
 
   onKeyPress(index) {
@@ -432,6 +466,11 @@ Page({
   },
 
   onDestroy() {
+    if (typeof hmApp !== 'undefined' && hmApp.unregisterGestureEvent) {
+      try {
+        hmApp.unregisterGestureEvent()
+      } catch (e) {}
+    }
     if (this.state.vibrate) {
       try {
         this.state.vibrate.stop()

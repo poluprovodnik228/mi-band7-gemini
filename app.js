@@ -4,7 +4,7 @@ import { MessageBuilder } from './shared/message'
 App({
   globalData: {
     messageBuilder: null,
-    selectedModel: 'lite', // 'lite' (быстрая) или 'hydrogen'
+    selectedModel: 'hydrogen', // 'hydrogen' (по умолчанию) или 'lite'
     enableReasoning: false,
     lastQuestion: '',
     lastAnswer: 'Нажмите «Спросить» внизу для ввода вопроса с клавиатуры.',

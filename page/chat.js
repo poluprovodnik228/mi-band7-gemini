@@ -1,6 +1,17 @@
 // Главный экран: Чат с Gemini AI
 // Обновленный современный дизайн под дисплей Xiaomi Smart Band 7 (192x490)
 
+function estimateTextHeight(text, charsPerLine, lineHeight) {
+  if (!text) return lineHeight
+  const paragraphs = text.split('\n')
+  let totalLines = 0
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i]
+    totalLines += Math.max(1, Math.ceil(p.length / charsPerLine))
+  }
+  return totalLines * lineHeight
+}
+
 function navigateTo(url) {
   if (typeof hmApp !== 'undefined' && hmApp.gotoPage) {
     hmApp.gotoPage({ url })
@@ -62,13 +73,18 @@ Page({
     })
 
     // 2. Верхняя капсула: Выбор модели (безопасная зона от скруглений y=28, x=24)
+    const app = getApp()
+    const globalData = (app && app.globalData) ? app.globalData : {}
+    const isHydrogen = (globalData.selectedModel !== 'lite')
+    const initModel = (isHydrogen ? '🧠 4 Hydrogen' : '⚡ 3.5 Lite') + ' ⚙️'
+
     this.state.modelBtnWidget = hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 24,
       y: 28,
       w: 144,
       h: 32,
       radius: 16,
-      text: '⚡ 3.5 Lite ⚙️',
+      text: initModel,
       color: 0x00F0FF,
       normal_color: 0x141B26,
       press_color: 0x222E40,
@@ -91,18 +107,15 @@ Page({
       align_h: hmUI.align.CENTER_H
     })
 
-    // 4. Карточка вопроса пользователя (ВЫ)
+    // 4. Карточка вопроса пользователя (ВЫ) - FILL_RECT для беспрепятственного скролла
     const qY = 88
-    this.state.qCardBg = hmUI.createWidget(hmUI.widget.BUTTON, {
+    this.state.qCardBg = hmUI.createWidget(hmUI.widget.FILL_RECT, {
       x: 12,
       y: qY,
       w: 168,
       h: 60,
       radius: 12,
-      text: '',
-      normal_color: 0x141C2E,
-      press_color: 0x141C2E,
-      click_func: () => {}
+      color: 0x141C2E
     })
 
     this.state.qLabelWidget = hmUI.createWidget(hmUI.widget.TEXT, {
@@ -126,18 +139,15 @@ Page({
       text_style: hmUI.text_style.WRAP
     })
 
-    // 5. Карточка ответа Gemini AI
+    // 5. Карточка ответа Gemini AI - FILL_RECT для беспрепятственного скролла
     const ansY = qY + 70
-    this.state.aCardBg = hmUI.createWidget(hmUI.widget.BUTTON, {
+    this.state.aCardBg = hmUI.createWidget(hmUI.widget.FILL_RECT, {
       x: 12,
       y: ansY,
       w: 168,
       h: 120,
       radius: 14,
-      text: '',
-      normal_color: 0x101D24,
-      press_color: 0x101D24,
-      click_func: () => {}
+      color: 0x101D24
     })
 
     this.state.aLabelWidget = hmUI.createWidget(hmUI.widget.TEXT, {
@@ -145,7 +155,7 @@ Page({
       y: ansY + 8,
       w: 148,
       h: 18,
-      text: '✨ GEMINI AI:',
+      text: isHydrogen ? '🧠 GEMINI (Hydrogen):' : '⚡ GEMINI (Lite):',
       text_size: 11,
       color: 0x00FFB0
     })
@@ -156,8 +166,8 @@ Page({
       w: 148,
       h: 80,
       text: 'Нажмите «Спросить» внизу для ввода вопроса с клавиатуры.',
-      text_size: 13,
-      color: 0xEEEEEE,
+      text_size: 14,
+      color: 0xFFFFFF,
       text_style: hmUI.text_style.WRAP
     })
 
@@ -296,60 +306,77 @@ Page({
       }
     }
 
-    // 3. Вычисление размеров карточек
+    // 3. Вычисление размеров карточек с улучшенной точностью
     const qText = globalData.lastQuestion || 'Пока нет вопроса'
     const aText = globalData.lastAnswer || 'Нажмите «Спросить» внизу для ввода вопроса с клавиатуры.'
 
     // Высота карточки вопроса
-    const qLines = Math.max(1, Math.ceil(qText.length / 16)) + qText.split('\n').length - 1
-    const qHeight = Math.max(24, qLines * 18)
-    const qCardH = 24 + qHeight + 10
+    const qHeight = Math.max(24, estimateTextHeight(qText, 16, 20))
+    const qCardH = 26 + qHeight + 12
 
-    // Высота карточки ответа
-    const aLines = Math.max(2, Math.ceil(aText.length / 16)) + aText.split('\n').length - 1
-    const aHeight = Math.max(48, aLines * 18)
-    const aCardH = 26 + aHeight + 12
+    // Высота карточки ответа (шрифт 14px, межстрочный интервал 21px)
+    const aHeight = Math.max(48, estimateTextHeight(aText, 15, 21))
+    const aCardH = 32 + aHeight + 16
 
     const qY = 88
-    const ansY = qY + qCardH + 10
-    const askBtnY = Math.max(420, ansY + aCardH + 18)
-    const totalContentH = askBtnY + 70
+    const ansY = qY + qCardH + 12
+    const askBtnY = Math.max(420, ansY + aCardH + 20)
+    const totalContentH = askBtnY + 50 + 40
 
-    // Обновляем карточку вопроса
+    // Обновляем карточку вопроса (FILL_RECT)
     if (this.state.qCardBg) {
       this.state.qCardBg.setProperty(hmUI.prop.MORE, {
         x: 12,
         y: qY,
         w: 168,
-        h: qCardH
+        h: qCardH,
+        radius: 12,
+        color: 0x141C2E
+      })
+    }
+    if (this.state.qLabelWidget) {
+      this.state.qLabelWidget.setProperty(hmUI.prop.MORE, {
+        x: 22,
+        y: qY + 8,
+        w: 148,
+        h: 18,
+        text_size: 11,
+        color: 0x00E5FF
       })
     }
     if (this.state.qTextWidget) {
       this.state.qTextWidget.setProperty(hmUI.prop.TEXT, qText)
       this.state.qTextWidget.setProperty(hmUI.prop.MORE, {
         x: 22,
-        y: qY + 24,
+        y: qY + 26,
         w: 148,
         h: qHeight,
+        text_size: 13,
+        color: 0xFFFFFF,
         text_style: hmUI.text_style.WRAP
       })
     }
 
-    // Обновляем карточку ответа
+    // Обновляем карточку ответа (FILL_RECT - не блокирует скролл)
     if (this.state.aCardBg) {
       this.state.aCardBg.setProperty(hmUI.prop.MORE, {
         x: 12,
         y: ansY,
         w: 168,
-        h: aCardH
+        h: aCardH,
+        radius: 14,
+        color: 0x101D24
       })
     }
     if (this.state.aLabelWidget) {
+      this.state.aLabelWidget.setProperty(hmUI.prop.TEXT, isHydrogen ? '🧠 GEMINI (Hydrogen):' : '⚡ GEMINI (Lite):')
       this.state.aLabelWidget.setProperty(hmUI.prop.MORE, {
         x: 22,
         y: ansY + 8,
         w: 148,
-        h: 18
+        h: 18,
+        text_size: 11,
+        color: 0x00FFB0
       })
     }
     if (this.state.aTextWidget) {
@@ -359,6 +386,8 @@ Page({
         y: ansY + 28,
         w: 148,
         h: aHeight,
+        text_size: 14,
+        color: 0xFFFFFF,
         text_style: hmUI.text_style.WRAP
       })
     }
@@ -369,7 +398,11 @@ Page({
         x: 16,
         y: askBtnY,
         w: 160,
-        h: 50
+        h: 50,
+        radius: 25,
+        text_size: 16,
+        color: 0xFFFFFF,
+        normal_color: 0x0066FF
       })
     }
 
@@ -379,7 +412,8 @@ Page({
         x: 0,
         y: 0,
         w: 192,
-        h: Math.max(490, totalContentH)
+        h: Math.max(490, totalContentH),
+        color: 0x000000
       })
     }
   },
