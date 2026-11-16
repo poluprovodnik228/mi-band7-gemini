@@ -134,7 +134,30 @@ Page({
       startY += 106
     })
 
-    // 3. Кнопка возврата в чат
+    // 3. Кнопка сброса контекста диалога
+    hmUI.createWidget(hmUI.widget.BUTTON, {
+      x: 14,
+      y: 338,
+      w: 164,
+      h: 44,
+      radius: 14,
+      text: '🧹 Сбросить контекст',
+      text_size: 13,
+      color: 0xFFAA88,
+      normal_color: 0x28181C,
+      press_color: 0x442026,
+      click_func: () => {
+        this.clickHaptic()
+        if (globalData.messageBuilder) {
+          globalData.messageBuilder.request({ clear: true }).catch(() => {})
+        }
+        globalData.lastQuestion = ''
+        globalData.lastAnswer = 'Контекст очищен. Задайте новый вопрос.'
+        goBack()
+      }
+    })
+
+    // 4. Кнопка возврата в чат
     hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 14,
       y: 420,

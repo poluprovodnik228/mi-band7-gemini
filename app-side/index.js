@@ -28,6 +28,23 @@ const MODELS = {
 const SYSTEM_INSTRUCTION =
   'Отвечай максимально коротко. Ты интегрирован в устройство с мелким экраном.'
 
+// Память контекста диалога (хранит последние 10 сообщений = 5 раундов беседы)
+const MAX_HISTORY_TURNS = 10
+let conversationHistory = []
+
+function saveToHistory(prompt, answer) {
+  if (!prompt || !answer) return
+  conversationHistory.push({ role: 'user', text: prompt.trim() })
+  conversationHistory.push({ role: 'model', text: answer.trim() })
+
+  if (conversationHistory.length > MAX_HISTORY_TURNS) {
+    conversationHistory = conversationHistory.slice(conversationHistory.length - MAX_HISTORY_TURNS)
+    while (conversationHistory.length > 0 && conversationHistory[0].role !== 'user') {
+      conversationHistory.shift()
+    }
+  }
+}
+
 /**
  * Очистка вводных вежливых клише ("Конечно!", "Вот ваш ответ:" и т.д.)
  */
@@ -186,6 +203,18 @@ AppSideService({
         }
         console.log('[Companion] Request data:', payload)
 
+        if (payload && payload.clear) {
+          conversationHistory = []
+          console.log('[Companion] Context explicitly cleared by user')
+          ctx.response({
+            data: {
+              status: 'ok',
+              answer: 'Контекст диалога очищен'
+            }
+          })
+          return
+        }
+
         const prompt = payload.prompt || ''
         const modelType = payload.model || 'hydrogen'
         const enableReasoning = !!payload.reasoning
@@ -220,6 +249,18 @@ AppSideService({
     if (this.messaging && this.messaging.peerSocket) {
       this.messaging.peerSocket.addListener('message', async (data) => {
         console.log('[Companion] Received request from Band (peerSocket):', data)
+
+        if (data && (data.type === 'clear_context' || data.clear)) {
+          conversationHistory = []
+          console.log('[Companion] Context explicitly cleared via peerSocket')
+          this.messaging.peerSocket.send({
+            type: 'gemini_response',
+            status: 'ok',
+            question: 'Сброс',
+            answer: 'Контекст диалога очищен'
+          })
+          return
+        }
 
         if (data.type === 'ask_gemini') {
           const prompt = data.prompt || ''
@@ -256,16 +297,33 @@ AppSideService({
       return this.callOpenRouter(prompt, modelType, enableReasoning)
     }
 
+    const clearKeywords = ['/clear', 'сброс', 'сбросить', 'новый чат', 'очистить', 'clear']
+    if (clearKeywords.includes(prompt.toLowerCase().trim())) {
+      conversationHistory = []
+      console.log('[Companion] Context cleared by user keyword')
+      return 'Контекст диалога очищен.'
+    }
+
     // Google AI Studio API:
     const chosenModel = modelType === 'lite' ? MODELS.lite : MODELS.hydrogen
     const fallbackModel = (chosenModel === MODELS.fallback) ? MODELS.secondaryFallback : MODELS.fallback
 
+    // Формируем историю диалога (чередование user -> model -> user -> model)
+    const contents = []
+    for (const msg of conversationHistory) {
+      contents.push({
+        role: msg.role === 'model' ? 'model' : 'user',
+        parts: [{ text: msg.text }]
+      })
+    }
+    // Добавляем текущий вопрос пользователя
+    contents.push({
+      role: 'user',
+      parts: [{ text: prompt }]
+    })
+
     const requestBody = {
-      contents: [
-        {
-          parts: [{ text: prompt }]
-        }
-      ],
+      contents,
       systemInstruction: {
         parts: [{ text: SYSTEM_INSTRUCTION }]
       },
@@ -284,7 +342,7 @@ AppSideService({
     const makeUrl = (m) =>
       `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${GEMINI_API_KEY}`
 
-    console.log(`[Companion] Requesting Gemini model: ${chosenModel}`)
+    console.log(`[Companion] Requesting Gemini model: ${chosenModel} (контекст: ${conversationHistory.length / 2} раундов)`)
     let res = await httpPost(makeUrl(chosenModel), requestBody, { timeout: REQUEST_TIMEOUT_MS })
 
     // Автоматический откат на облегченную модель при 404, 429 или 503
@@ -310,27 +368,44 @@ AppSideService({
       .map((p) => p.text.trim())
 
     const rawResult = textParts.join('\n')
-    return stripFluff(rawResult) || 'Пустой ответ'
+    const finalAnswer = stripFluff(rawResult) || 'Пустой ответ'
+    saveToHistory(prompt, finalAnswer)
+    return finalAnswer
   },
 
   async callOpenRouter(prompt, modelType, enableReasoning) {
+    const clearKeywords = ['/clear', 'сброс', 'сбросить', 'новый чат', 'очистить', 'clear']
+    if (clearKeywords.includes(prompt.toLowerCase().trim())) {
+      conversationHistory = []
+      console.log('[Companion] Context cleared by user keyword')
+      return 'Контекст диалога очищен.'
+    }
+
     const chosenModel = modelType === 'lite'
       ? 'google/gemini-3.5-flash-lite'
       : 'google/gemini-4-hydrogen'
     const fallbackModel = 'google/gemini-3.5-flash-lite'
 
+    const messages = [
+      {
+        role: 'system',
+        content: SYSTEM_INSTRUCTION
+      }
+    ]
+    for (const msg of conversationHistory) {
+      messages.push({
+        role: msg.role === 'model' ? 'assistant' : 'user',
+        content: msg.text
+      })
+    }
+    messages.push({
+      role: 'user',
+      content: prompt
+    })
+
     const makeBody = (m) => ({
       model: m,
-      messages: [
-        {
-          role: 'system',
-          content: SYSTEM_INSTRUCTION
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
+      messages,
       max_tokens: 250,
       temperature: 0.1
     })
@@ -340,7 +415,7 @@ AppSideService({
       Authorization: `Bearer ${OPENROUTER_API_KEY}`
     }
 
-    console.log(`[Companion] Requesting OpenRouter model: ${chosenModel}`)
+    console.log(`[Companion] Requesting OpenRouter model: ${chosenModel} (контекст: ${conversationHistory.length / 2} раундов)`)
     let res = await httpPost(url, makeBody(chosenModel), { headers, timeout: REQUEST_TIMEOUT_MS })
 
     // Fallback для OpenRouter при 404, 429, 503
@@ -354,7 +429,9 @@ AppSideService({
     }
 
     const rawResult = res.data?.choices?.[0]?.message?.content?.trim() || 'Пустой ответ'
-    return stripFluff(rawResult)
+    const finalAnswer = stripFluff(rawResult)
+    saveToHistory(prompt, finalAnswer)
+    return finalAnswer
   },
 
   onDestroy() {
