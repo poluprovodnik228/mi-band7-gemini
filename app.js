@@ -4,10 +4,14 @@ import { MessageBuilder } from './shared/message'
 App({
   globalData: {
     messageBuilder: null,
-    selectedModel: 'hydrogen', // 'hydrogen' (по умолчанию) или 'lite'
+    selectedModel: 'hydrogen', // 'hydrogen' (default) or 'lite'
     enableReasoning: false,
-    lastQuestion: '',
-    lastAnswer: 'Нажмите «Спросить» внизу для ввода вопроса с клавиатуры.',
+    chatMessages: [
+      {
+        role: 'model',
+        text: 'Tap "Ask" below to type your question with keyboard.'
+      }
+    ],
     pendingQuestion: null,
     isLoading: false,
     onAnswerReceived: null

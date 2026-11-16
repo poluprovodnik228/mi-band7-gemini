@@ -60,7 +60,7 @@ Page({
       y: 16,
       w: 168,
       h: 28,
-      text: '⚙️ Настройки ИИ',
+      text: '⚙️ AI Settings',
       text_size: 17,
       color: 0x00F0FF,
       align_h: hmUI.align.CENTER_H
@@ -73,7 +73,7 @@ Page({
       w: 168,
       h: 52,
       radius: 12,
-      text: globalData.enableReasoning ? '💭 Рассуждения: ВКЛ' : '⚡ Рассуждения: ВЫКЛ',
+      text: globalData.enableReasoning ? '💭 Reasoning: ON' : '⚡ Reasoning: OFF',
       text_size: 13,
       color: globalData.enableReasoning ? 0x00FF88 : 0x8899AA,
       normal_color: 0x161C26,
@@ -84,7 +84,7 @@ Page({
         const isEnabled = globalData.enableReasoning
         this.state.reasoningBtn.setProperty(
           hmUI.prop.TEXT,
-          isEnabled ? '💭 Рассуждения: ВКЛ' : '⚡ Рассуждения: ВЫКЛ'
+          isEnabled ? '💭 Reasoning: ON' : '⚡ Reasoning: OFF'
         )
         this.state.reasoningBtn.setProperty(
           hmUI.prop.COLOR,
@@ -98,14 +98,14 @@ Page({
       {
         id: 'hydrogen',
         title: '🧠 4 Hydrogen',
-        tag: 'ПО УМОЛЧАНИЮ',
-        subtitle: 'Глубокая логика, код\nТочные ответы Gemini 4'
+        tag: 'DEFAULT',
+        subtitle: 'Deep reasoning, code\nPrecise Gemini 4 logic'
       },
       {
         id: 'lite',
         title: '⚡ 3.5 Flash-Lite',
-        tag: 'БЫСТРЫЙ РЕЖИМ',
-        subtitle: 'Мгновенный ответ (<0.8с)\nФакты, перевод, поиск'
+        tag: 'FAST MODE',
+        subtitle: 'Instant answer (<0.8s)\nFacts, translation, search'
       }
     ]
 
@@ -141,7 +141,7 @@ Page({
       w: 164,
       h: 44,
       radius: 14,
-      text: '🧹 Сбросить контекст',
+      text: '🧹 Clear Context',
       text_size: 13,
       color: 0xFFAA88,
       normal_color: 0x28181C,
@@ -151,8 +151,9 @@ Page({
         if (globalData.messageBuilder) {
           globalData.messageBuilder.request({ clear: true }).catch(() => {})
         }
-        globalData.lastQuestion = ''
-        globalData.lastAnswer = 'Контекст очищен. Задайте новый вопрос.'
+        globalData.chatMessages = [
+          { role: 'model', text: 'Context cleared. Ready for new questions.' }
+        ]
         goBack()
       }
     })
@@ -164,7 +165,7 @@ Page({
       w: 164,
       h: 48,
       radius: 24,
-      text: '← Назад в чат',
+      text: '← Back to Chat',
       text_size: 15,
       color: 0xFFFFFF,
       normal_color: 0x1E2430,

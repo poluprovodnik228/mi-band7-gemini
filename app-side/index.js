@@ -13,8 +13,8 @@ const USE_OPENROUTER = false
 const OPENROUTER_API_KEY = "YOUR_OPENROUTER_API_KEY"
 
 // Конфигурация таймаутов и ограничений BLE
-const REQUEST_TIMEOUT_MS = 15000 // 15-секундный таймаут запроса
-const MAX_BLE_TEXT_LENGTH = 1000 // Лимит буфера BLE на Mi Band 7 (1000 символов)
+const REQUEST_TIMEOUT_MS = 45000 // 45s timeout to allow deep reasoning on Hydrogen
+const MAX_BLE_TEXT_LENGTH = 1200 // Лимит буфера BLE на Mi Band 7 (~150-180 слов)
 
 // Модели Google AI Studio
 const MODELS = {
@@ -24,11 +24,11 @@ const MODELS = {
   secondaryFallback: 'gemini-3.5-flash-lite'
 }
 
-// Минималистичный системный промпт под мелкий экран
+// Smart prompt for wearable smartwatch: brief by default, but detailed when asked
 const SYSTEM_INSTRUCTION =
-  'Отвечай максимально коротко. Ты интегрирован в устройство с мелким экраном.'
+  'You are an AI on a wearable smartwatch device. By default, answer concisely and briefly. However, if the user explicitly asks for a long answer, detailed explanation, essay, story, or specific word count, fulfill their request thoroughly.'
 
-// Память контекста диалога (хранит последние 10 сообщений = 5 раундов беседы)
+// Conversation context memory (stores last 10 messages = 5 dialogue turns)
 const MAX_HISTORY_TURNS = 10
 let conversationHistory = []
 
@@ -106,6 +106,10 @@ function isFallbackError(status, data) {
   if (statusStr === 'NOT_FOUND' || statusStr === 'RESOURCE_EXHAUSTED' || statusStr === 'UNAVAILABLE') {
     return true
   }
+  const msg = (data?.error?.message || '').toLowerCase()
+  if (msg.includes('quota') || msg.includes('rate limit') || msg.includes('exceeded')) {
+    return true
+  }
   return false
 }
 
@@ -123,7 +127,7 @@ async function httpPost(url, payload, options = {}) {
   let timer = null
   const timeoutPromise = new Promise((_, reject) => {
     timer = setTimeout(() => {
-      reject(new Error('Таймаут соединения (15 сек)'))
+      reject(new Error('Connection timeout (15s)'))
     }, timeoutMs)
   })
 
@@ -144,7 +148,7 @@ async function httpPost(url, payload, options = {}) {
           body: bodyStr
         })
       } catch (err2) {
-        throw new Error('Сбой сети: ' + (err2.message || 'нет подключения'))
+        throw new Error('Network failure: ' + (err2.message || 'no connection'))
       }
     }
 
@@ -209,7 +213,7 @@ AppSideService({
           ctx.response({
             data: {
               status: 'ok',
-              answer: 'Контекст диалога очищен'
+              answer: 'Context cleared'
             }
           })
           return
@@ -230,7 +234,7 @@ AppSideService({
           })
         } catch (err) {
           console.error('[Companion] API Error:', err)
-          const errorText = 'Ошибка ИИ: ' + (err.message || 'Проверьте сеть')
+          const errorText = 'AI Error: ' + (err.message || 'Check network')
           ctx.response({
             data: {
               status: 'error',
@@ -245,7 +249,7 @@ AppSideService({
   },
 
   onRun() {
-    // Резервная поддержка peerSocket
+    // Fallback peerSocket support
     if (this.messaging && this.messaging.peerSocket) {
       this.messaging.peerSocket.addListener('message', async (data) => {
         console.log('[Companion] Received request from Band (peerSocket):', data)
@@ -256,8 +260,8 @@ AppSideService({
           this.messaging.peerSocket.send({
             type: 'gemini_response',
             status: 'ok',
-            question: 'Сброс',
-            answer: 'Контекст диалога очищен'
+            question: 'Reset',
+            answer: 'Context cleared'
           })
           return
         }
@@ -279,7 +283,7 @@ AppSideService({
             })
           } catch (err) {
             console.error('[Companion] API Error:', err)
-            const errorText = 'Ошибка связи с ИИ: ' + (err.message || 'Проверьте сеть')
+            const errorText = 'AI Error: ' + (err.message || 'Check network')
             this.messaging.peerSocket.send({
               type: 'gemini_response',
               status: 'error',
@@ -297,11 +301,11 @@ AppSideService({
       return this.callOpenRouter(prompt, modelType, enableReasoning)
     }
 
-    const clearKeywords = ['/clear', 'сброс', 'сбросить', 'новый чат', 'очистить', 'clear']
+    const clearKeywords = ['/clear', 'clear', 'reset', 'new chat', 'clean', 'сброс', 'сбросить', 'новый чат', 'очистить']
     if (clearKeywords.includes(prompt.toLowerCase().trim())) {
       conversationHistory = []
       console.log('[Companion] Context cleared by user keyword')
-      return 'Контекст диалога очищен.'
+      return 'Context cleared.'
     }
 
     // Google AI Studio API:
@@ -328,7 +332,7 @@ AppSideService({
         parts: [{ text: SYSTEM_INSTRUCTION }]
       },
       generationConfig: {
-        maxOutputTokens: 250,
+        maxOutputTokens: 1000,
         temperature: 0.1
       }
     }
@@ -348,7 +352,7 @@ AppSideService({
     // Автоматический откат на облегченную модель при 404, 429 или 503
     if (isFallbackError(res.status, res.data)) {
       console.warn(
-        `[Companion] Model ${chosenModel} returned ${res.status} (${res.data?.error?.message || 'Error'}). Falling back to ${fallbackModel}...`
+        `[Companion] Model ${chosenModel} returned ${res.status} (${res.data?.error?.message || 'Quota/Network error'}). Falling back to ${fallbackModel}...`
       )
       res = await httpPost(makeUrl(fallbackModel), requestBody, { timeout: REQUEST_TIMEOUT_MS })
     }
@@ -359,26 +363,46 @@ AppSideService({
 
     const candidate = res.data?.candidates?.[0]
     if (!candidate || !candidate.content || !candidate.content.parts) {
-      return 'Нет ответа от модели'
+      return 'No response from model'
     }
 
     // Извлекаем только финальный текст без промежуточных мыслей thinking
-    const textParts = candidate.content.parts
+    let textParts = candidate.content.parts
       .filter((p) => !p.thought && p.text)
       .map((p) => p.text.trim())
 
-    const rawResult = textParts.join('\n')
-    const finalAnswer = stripFluff(rawResult) || 'Пустой ответ'
-    saveToHistory(prompt, finalAnswer)
+    let rawResult = textParts.join('\n')
+    // Fallback если все части были помечены как thought или текст лежал во всех частях
+    if (!rawResult) {
+      rawResult = candidate.content.parts
+        .filter((p) => p.text)
+        .map((p) => p.text.trim())
+        .join('\n')
+    }
+
+    const stripped = stripFluff(rawResult)
+    // Защита: если stripFluff удалил всё (например, ответ был просто "Привет!"), сохраняем rawResult
+    let finalAnswer = (stripped && stripped.length > 0 ? stripped : rawResult.trim())
+    if (!finalAnswer) {
+      if (candidate.finishReason === 'MAX_TOKENS') {
+        finalAnswer = 'Response truncated (token limit)'
+      } else {
+        finalAnswer = 'Empty response'
+      }
+    }
+
+    if (finalAnswer && !finalAnswer.startsWith('Empty response') && !finalAnswer.startsWith('Response truncated')) {
+      saveToHistory(prompt, finalAnswer)
+    }
     return finalAnswer
   },
 
   async callOpenRouter(prompt, modelType, enableReasoning) {
-    const clearKeywords = ['/clear', 'сброс', 'сбросить', 'новый чат', 'очистить', 'clear']
+    const clearKeywords = ['/clear', 'clear', 'reset', 'new chat', 'clean', 'сброс', 'сбросить', 'новый чат', 'очистить']
     if (clearKeywords.includes(prompt.toLowerCase().trim())) {
       conversationHistory = []
       console.log('[Companion] Context cleared by user keyword')
-      return 'Контекст диалога очищен.'
+      return 'Context cleared.'
     }
 
     const chosenModel = modelType === 'lite'
@@ -415,7 +439,7 @@ AppSideService({
       Authorization: `Bearer ${OPENROUTER_API_KEY}`
     }
 
-    console.log(`[Companion] Requesting OpenRouter model: ${chosenModel} (контекст: ${conversationHistory.length / 2} раундов)`)
+    console.log(`[Companion] Requesting OpenRouter model: ${chosenModel} (context: ${conversationHistory.length / 2} turns)`)
     let res = await httpPost(url, makeBody(chosenModel), { headers, timeout: REQUEST_TIMEOUT_MS })
 
     // Fallback для OpenRouter при 404, 429, 503
@@ -428,7 +452,7 @@ AppSideService({
       throw new Error(res.data.error.message || `OpenRouter Error (${res.status})`)
     }
 
-    const rawResult = res.data?.choices?.[0]?.message?.content?.trim() || 'Пустой ответ'
+    const rawResult = res.data?.choices?.[0]?.message?.content?.trim() || 'Empty response'
     const finalAnswer = stripFluff(rawResult)
     saveToHistory(prompt, finalAnswer)
     return finalAnswer

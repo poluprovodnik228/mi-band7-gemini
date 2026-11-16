@@ -64,8 +64,8 @@ const LAYOUTS = {
 Page({
   state: {
     text: '',
-    lang: 'RU',
-    isUpper: false, // false = строчные буквы, true = заглавные (Caps)
+    lang: 'EN',
+    isUpper: false, // false = lowercase, true = uppercase (Caps)
     currentPage: 0,
     textWidget: null,
     tabWidgets: [],
@@ -128,7 +128,7 @@ Page({
       y: 38,
       w: 148,
       h: 50,
-      text: 'Ввод вопроса...',
+      text: 'Enter question...',
       text_size: 14,
       color: 0x556677,
       text_style: hmUI.text_style.WRAP,
@@ -198,25 +198,25 @@ Page({
       this.state.keyWidgets.push(btn)
     }
 
-    // 5. Ряд управления: [ 🌐 RU ]  [ ⇧ А ]  [ ␣ Пробел ]  [ ⌫ Стереть ]
+    // 5. Ряд управления: [ 🌐 EN ]  [ ⇧ A ]  [ ␣ Space ]  [ ⌫ ]
     const ctrlY = 334
     const ctrlH = 44
 
-    // Кнопка языка (RU / EN)
+    // Кнопка языка (EN / RU)
     this.state.langWidget = hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 10,
       y: ctrlY,
       w: 38,
       h: ctrlH,
       radius: 10,
-      text: '🌐RU',
+      text: '🌐EN',
       text_size: 11,
       color: 0x00FFCC,
       normal_color: 0x1E2632,
       press_color: 0x334455,
       click_func: () => {
         this.hapticClick()
-        this.state.lang = this.state.lang === 'RU' ? 'EN' : 'RU'
+        this.state.lang = this.state.lang === 'EN' ? 'RU' : 'EN'
         this.state.currentPage = 0
         this.state.langWidget.setProperty(hmUI.prop.TEXT, '🌐' + this.state.lang)
         this.updateTabs()
@@ -224,14 +224,14 @@ Page({
       }
     })
 
-    // Кнопка регистра (Shift / Caps: строчные <-> заглавные)
+    // Кнопка регистра (Shift / Caps)
     this.state.shiftWidget = hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 52,
       y: ctrlY,
       w: 38,
       h: ctrlH,
       radius: 10,
-      text: '⇧ А',
+      text: '⇧ A',
       text_size: 13,
       color: 0x8899AA,
       normal_color: 0x1E2632,
@@ -245,15 +245,15 @@ Page({
       }
     })
 
-    // Пробел
+    // Пробел (Space)
     hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 94,
       y: ctrlY,
       w: 48,
       h: ctrlH,
       radius: 10,
-      text: '␣ Проб',
-      text_size: 12,
+      text: '␣ Space',
+      text_size: 11,
       color: 0xFFFFFF,
       normal_color: 0x1E2632,
       press_color: 0x334455,
@@ -285,7 +285,7 @@ Page({
       }
     })
 
-    // 6. Панель действий: [ ✕ Назад ]  [ ↵ Спросить ]
+    // 6. Панель действий: [ ✕ Back ]  [ ↵ Send ]
     const actY = 386
     const actH = 48
 
@@ -296,7 +296,7 @@ Page({
       w: 82,
       h: actH,
       radius: 24,
-      text: '✕ Назад',
+      text: '✕ Back',
       text_size: 14,
       color: 0xAAAAAA,
       normal_color: 0x20242D,
@@ -314,7 +314,7 @@ Page({
       w: 82,
       h: actH,
       radius: 24,
-      text: '↵ Запрос',
+      text: '↵ Send',
       text_size: 14,
       color: 0xFFFFFF,
       normal_color: 0x0066FF,
@@ -382,7 +382,10 @@ Page({
   updateShiftBtn() {
     if (!this.state.shiftWidget) return
     const isUp = this.state.isUpper
-    this.state.shiftWidget.setProperty(hmUI.prop.TEXT, isUp ? '⇩ а' : '⇧ А')
+    const isRu = (this.state.lang === 'RU')
+    const char = isRu ? (isUp ? 'а' : 'А') : (isUp ? 'a' : 'A')
+    const arrow = isUp ? '⇩ ' : '⇧ '
+    this.state.shiftWidget.setProperty(hmUI.prop.TEXT, arrow + char)
     this.state.shiftWidget.setProperty(hmUI.prop.COLOR, isUp ? 0x00F0FF : 0x8899AA)
     this.state.shiftWidget.setProperty(hmUI.prop.NORMAL_COLOR, isUp ? 0x004488 : 0x1E2632)
   },
@@ -430,7 +433,7 @@ Page({
         text_style: hmUI.text_style.WRAP,
         align_h: hmUI.align.LEFT
       })
-      this.state.textWidget.setProperty(hmUI.prop.TEXT, 'Ввод вопроса...')
+      this.state.textWidget.setProperty(hmUI.prop.TEXT, 'Enter question...')
       this.state.textWidget.setProperty(hmUI.prop.COLOR, 0x556677)
     } else {
       // Адаптивный размер шрифта: текст любого объема помещается целиком, начало не срезается
