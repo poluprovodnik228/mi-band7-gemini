@@ -13,6 +13,7 @@ Page({
   state: {
     vibrate: null,
     reasoningBtn: null,
+    webSearchBtn: null,
     modelBtns: {}
   },
 
@@ -59,22 +60,22 @@ Page({
       x: 12,
       y: 16,
       w: 168,
-      h: 28,
+      h: 26,
       text: '⚙️ AI Settings',
-      text_size: 17,
+      text_size: 16,
       color: 0x00F0FF,
       align_h: hmUI.align.CENTER_H
     })
 
-    // 1. Тумблер глубоких рассуждений
+    // 1. Тумблер глубоких рассуждений (слева)
     this.state.reasoningBtn = hmUI.createWidget(hmUI.widget.BUTTON, {
-      x: 12,
-      y: 52,
-      w: 168,
-      h: 52,
+      x: 10,
+      y: 48,
+      w: 82,
+      h: 46,
       radius: 12,
-      text: globalData.enableReasoning ? '💭 Reasoning: ON' : '⚡ Reasoning: OFF',
-      text_size: 13,
+      text: globalData.enableReasoning ? '💭 Think\nON' : '⚡ Think\nOFF',
+      text_size: 12,
       color: globalData.enableReasoning ? 0x00FF88 : 0x8899AA,
       normal_color: 0x161C26,
       press_color: 0x242F40,
@@ -84,7 +85,7 @@ Page({
         const isEnabled = globalData.enableReasoning
         this.state.reasoningBtn.setProperty(
           hmUI.prop.TEXT,
-          isEnabled ? '💭 Reasoning: ON' : '⚡ Reasoning: OFF'
+          isEnabled ? '💭 Think\nON' : '⚡ Think\nOFF'
         )
         this.state.reasoningBtn.setProperty(
           hmUI.prop.COLOR,
@@ -93,7 +94,35 @@ Page({
       }
     })
 
-    // 2. Две целевые модели (Hydrogen по умолчанию)
+    // 2. Тумблер живого веб-поиска (справа)
+    const isWeb = (globalData.enableWebSearch !== false)
+    this.state.webSearchBtn = hmUI.createWidget(hmUI.widget.BUTTON, {
+      x: 100,
+      y: 48,
+      w: 82,
+      h: 46,
+      radius: 12,
+      text: isWeb ? '🌐 Web\nON' : '🌐 Web\nOFF',
+      text_size: 12,
+      color: isWeb ? 0x00F0FF : 0x8899AA,
+      normal_color: 0x161C26,
+      press_color: 0x242F40,
+      click_func: () => {
+        this.clickHaptic()
+        globalData.enableWebSearch = (globalData.enableWebSearch === false) ? true : false
+        const active = (globalData.enableWebSearch !== false)
+        this.state.webSearchBtn.setProperty(
+          hmUI.prop.TEXT,
+          active ? '🌐 Web\nON' : '🌐 Web\nOFF'
+        )
+        this.state.webSearchBtn.setProperty(
+          hmUI.prop.COLOR,
+          active ? 0x00F0FF : 0x8899AA
+        )
+      }
+    })
+
+    // 3. Две целевые модели (Hydrogen по умолчанию)
     const models = [
       {
         id: 'hydrogen',
@@ -109,13 +138,13 @@ Page({
       }
     ]
 
-    let startY = 114
+    let startY = 104
     models.forEach((m) => {
       const isSelected = (globalData.selectedModel || 'hydrogen') === m.id
       const btn = hmUI.createWidget(hmUI.widget.BUTTON, {
-        x: 12,
+        x: 10,
         y: startY,
-        w: 168,
+        w: 172,
         h: 96,
         radius: 14,
         text: `${isSelected ? '◉ ' : '○ '}${m.title}\n[${m.tag}]\n${m.subtitle}`,
@@ -131,13 +160,13 @@ Page({
         }
       })
       this.state.modelBtns[m.id] = btn
-      startY += 106
+      startY += 104
     })
 
-    // 3. Кнопка сброса контекста диалога
+    // 4. Кнопка сброса контекста диалога
     hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 14,
-      y: 338,
+      y: 320,
       w: 164,
       h: 44,
       radius: 14,
@@ -158,13 +187,13 @@ Page({
       }
     })
 
-    // 4. Кнопка возврата в чат
+    // 5. Кнопка возврата в чат
     hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 14,
-      y: 420,
+      y: 374,
       w: 164,
-      h: 48,
-      radius: 24,
+      h: 46,
+      radius: 23,
       text: '← Back to Chat',
       text_size: 15,
       color: 0xFFFFFF,

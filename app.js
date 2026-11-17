@@ -6,6 +6,7 @@ App({
     messageBuilder: null,
     selectedModel: 'hydrogen', // 'hydrogen' (default) or 'lite'
     enableReasoning: false,
+    enableWebSearch: true, // Real-time internet search via companion
     chatMessages: [
       {
         role: 'model',

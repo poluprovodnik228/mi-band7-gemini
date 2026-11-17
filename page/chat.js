@@ -98,19 +98,21 @@ Page({
     const app = getApp()
     const globalData = (app && app.globalData) ? app.globalData : {}
     const isHydrogen = (globalData.selectedModel !== 'lite')
-    const initModel = (isHydrogen ? '🧠 4 Hydrogen' : '⚡ 3.5 Lite') + ' ⚙️'
+    const initModel = (isHydrogen ? '🧠 4 Hydrogen' : '⚡ 3.5 Lite') +
+                      (globalData.enableWebSearch !== false ? ' 🌐' : '') +
+                      (globalData.enableReasoning ? ' 💭' : '') + ' ⚙️'
 
     this.state.modelBtnWidget = hmUI.createWidget(hmUI.widget.BUTTON, {
-      x: 24,
+      x: 14,
       y: 28,
-      w: 144,
+      w: 164,
       h: 32,
       radius: 16,
       text: initModel,
       color: 0x00F0FF,
       normal_color: 0x141B26,
       press_color: 0x222E40,
-      text_size: 13,
+      text_size: 12,
       click_func: () => {
         this.hapticNotify()
         navigateTo('page/model_select')
@@ -242,9 +244,9 @@ Page({
     globalData.chatMessages.push({ role: 'user', text: promptText })
     globalData.chatMessages.push({ role: 'model', text: 'Waiting for Gemini response...' })
 
-    // Extended timeout for deep reasoning on Hydrogen (50s) vs Lite (20s)
+    // Extended timeout for deep reasoning on Hydrogen (120s) vs Lite (25s)
     const isHydrogen = (globalData.selectedModel !== 'lite')
-    const reqTimeout = isHydrogen ? 50000 : 20000
+    const reqTimeout = isHydrogen ? 120000 : 25000
 
     this.state.isRequesting = true
     globalData.isLoading = true
@@ -260,12 +262,12 @@ Page({
         globalData.isLoading = false
         const msgs = globalData.chatMessages
         if (msgs && msgs.length > 0 && msgs[msgs.length - 1].role === 'model') {
-          msgs[msgs.length - 1].text = '⚠️ Request timed out (50s).\nCheck smartphone internet.'
+          msgs[msgs.length - 1].text = `⚠️ Request timed out (${Math.round(reqTimeout / 1000)}s).\nCheck smartphone internet.`
         }
         this.hapticNotify()
         this.refreshUI()
       }
-    }, reqTimeout + 3000)
+    }, reqTimeout + 4000)
 
     const mb = globalData.messageBuilder
     if (mb) {
@@ -273,7 +275,8 @@ Page({
       mb.request({
         prompt: promptText,
         model: globalData.selectedModel,
-        reasoning: globalData.enableReasoning
+        reasoning: globalData.enableReasoning,
+        webSearch: globalData.enableWebSearch !== false
       }, { timeout: reqTimeout })
       .then((res) => {
         if (!finished) {
@@ -303,7 +306,7 @@ Page({
           globalData.isLoading = false
           const isTimeout = err && err.message && err.message.toLowerCase().includes('timeout')
           const errDesc = isTimeout
-            ? '⚠️ Request timed out.\nGemini took too long to think.'
+            ? `⚠️ Request timed out (${Math.round(reqTimeout / 1000)}s).\nGemini took too long to think.`
             : '⚠️ Phone connection error.\nCheck Bluetooth and Zepp app.'
           const msgs = globalData.chatMessages
           if (msgs && msgs.length > 0 && msgs[msgs.length - 1].role === 'model') {
@@ -332,9 +335,10 @@ Page({
     const globalData = (app && app.globalData) ? app.globalData : {}
     const isHydrogen = (globalData.selectedModel !== 'lite')
 
-    // 1. Model Badge
+    // 1. Model Badge with Internet & Reasoning icons
     const modelLabel = (isHydrogen ? '🧠 4 Hydrogen' : '⚡ 3.5 Lite') +
-                       (globalData.enableReasoning ? ' + 💭' : '') + ' ⚙️'
+                       (globalData.enableWebSearch !== false ? ' 🌐' : '') +
+                       (globalData.enableReasoning ? ' 💭' : '') + ' ⚙️'
     if (this.state.modelBtnWidget) {
       this.state.modelBtnWidget.setProperty(hmUI.prop.TEXT, modelLabel)
     }

@@ -13,7 +13,7 @@ const USE_OPENROUTER = false
 const OPENROUTER_API_KEY = "YOUR_OPENROUTER_API_KEY"
 
 // Конфигурация таймаутов и ограничений BLE
-const REQUEST_TIMEOUT_MS = 45000 // 45s timeout to allow deep reasoning on Hydrogen
+const REQUEST_TIMEOUT_MS = 120000 // 120s timeout to allow deep reasoning on Hydrogen
 const MAX_BLE_TEXT_LENGTH = 1200 // Лимит буфера BLE на Mi Band 7 (~150-180 слов)
 
 // Модели Google AI Studio
@@ -114,6 +114,76 @@ function isFallbackError(status, data) {
 }
 
 /**
+ * Live Web Search via DuckDuckGo Lite (no API keys, no captcha, real-time facts)
+ */
+async function fetchWebSearch(query) {
+  if (!query || typeof query !== 'string') return []
+  const cleanQ = query.trim()
+  if (cleanQ.length < 2) return []
+
+  const skipKeywords = ['привет', 'hello', 'hi', 'clear', 'reset', 'спасибо', 'пока', 'test']
+  if (skipKeywords.includes(cleanQ.toLowerCase())) return []
+
+  try {
+    const postBody = `q=${encodeURIComponent(cleanQ)}`
+    const searchUrl = 'https://lite.duckduckgo.com/lite/'
+    let rawRes = null
+
+    try {
+      rawRes = await fetch({
+        url: searchUrl,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        body: postBody
+      })
+    } catch (_) {
+      try {
+        rawRes = await fetch(searchUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          },
+          body: postBody
+        })
+      } catch (e) {
+        console.log('[WebSearch fetch error]', e.message)
+        return []
+      }
+    }
+
+    if (!rawRes) return []
+
+    let html = ''
+    if (typeof rawRes.text === 'function') {
+      try { html = await rawRes.text() } catch (_) {}
+    } else if (typeof rawRes.body === 'string') {
+      html = rawRes.body
+    }
+
+    if (!html) return []
+
+    const snippets = []
+    const regex = /<td class=[\x27"]result-snippet[\x27"]>([\s\S]*?)<\/td>/g
+    let match
+    while ((match = regex.exec(html)) !== null && snippets.length < 3) {
+      const clean = match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
+      if (clean && clean.length > 20) {
+        snippets.push(clean)
+      }
+    }
+    console.log(`[Companion WebSearch] Found ${snippets.length} live snippets for: "${cleanQ.slice(0, 30)}"`)
+    return snippets
+  } catch (err) {
+    console.warn('[Companion WebSearch error]', err)
+    return []
+  }
+}
+
+/**
  * HTTP POST запрос с поддержкой Zepp OS Fetch API и таймаута
  */
 async function httpPost(url, payload, options = {}) {
@@ -127,7 +197,7 @@ async function httpPost(url, payload, options = {}) {
   let timer = null
   const timeoutPromise = new Promise((_, reject) => {
     timer = setTimeout(() => {
-      reject(new Error('Connection timeout (15s)'))
+      reject(new Error(`Connection timeout (${Math.round(timeoutMs / 1000)}s)`))
     }, timeoutMs)
   })
 
@@ -222,9 +292,10 @@ AppSideService({
         const prompt = payload.prompt || ''
         const modelType = payload.model || 'hydrogen'
         const enableReasoning = !!payload.reasoning
+        const enableWebSearch = payload.webSearch !== false
 
         try {
-          const rawAnswer = await this.callGeminiAPI(prompt, modelType, enableReasoning)
+          const rawAnswer = await this.callGeminiAPI(prompt, modelType, enableReasoning, enableWebSearch)
           const safeAnswer = sanitizeForBLE(rawAnswer, MAX_BLE_TEXT_LENGTH)
           ctx.response({
             data: {
@@ -270,9 +341,10 @@ AppSideService({
           const prompt = data.prompt || ''
           const modelType = data.model || 'hydrogen'
           const enableReasoning = !!data.reasoning
+          const enableWebSearch = data.webSearch !== false
 
           try {
-            const rawAnswer = await this.callGeminiAPI(prompt, modelType, enableReasoning)
+            const rawAnswer = await this.callGeminiAPI(prompt, modelType, enableReasoning, enableWebSearch)
             const safeAnswer = sanitizeForBLE(rawAnswer, MAX_BLE_TEXT_LENGTH)
 
             this.messaging.peerSocket.send({
@@ -296,9 +368,9 @@ AppSideService({
     }
   },
 
-  async callGeminiAPI(prompt, modelType, enableReasoning) {
+  async callGeminiAPI(prompt, modelType, enableReasoning, enableWebSearch = true) {
     if (USE_OPENROUTER) {
-      return this.callOpenRouter(prompt, modelType, enableReasoning)
+      return this.callOpenRouter(prompt, modelType, enableReasoning, enableWebSearch)
     }
 
     const clearKeywords = ['/clear', 'clear', 'reset', 'new chat', 'clean', 'сброс', 'сбросить', 'новый чат', 'очистить']
@@ -312,6 +384,20 @@ AppSideService({
     const chosenModel = modelType === 'lite' ? MODELS.lite : MODELS.hydrogen
     const fallbackModel = (chosenModel === MODELS.fallback) ? MODELS.secondaryFallback : MODELS.fallback
 
+    // 1. Live Web Search: получаем свежие факты из интернета при включенном поиске
+    let effectiveUserText = prompt
+    if (enableWebSearch) {
+      try {
+        const snippets = await fetchWebSearch(prompt)
+        if (snippets && snippets.length > 0) {
+          effectiveUserText = `[Current Web Search Results]:\n${snippets.join('\n')}\n\n[User Question]: ${prompt}\n(Answer concisely using the latest real-time web info above if relevant)`
+          console.log(`[Companion] Injected ${snippets.length} web search snippets into prompt`)
+        }
+      } catch (err) {
+        console.log('[Companion] Web search failed, proceeding without search:', err)
+      }
+    }
+
     // Формируем историю диалога (чередование user -> model -> user -> model)
     const contents = []
     for (const msg of conversationHistory) {
@@ -320,10 +406,10 @@ AppSideService({
         parts: [{ text: msg.text }]
       })
     }
-    // Добавляем текущий вопрос пользователя
+    // Добавляем текущий вопрос пользователя с веб-контекстом
     contents.push({
       role: 'user',
-      parts: [{ text: prompt }]
+      parts: [{ text: effectiveUserText }]
     })
 
     const requestBody = {
@@ -332,14 +418,19 @@ AppSideService({
         parts: [{ text: SYSTEM_INSTRUCTION }]
       },
       generationConfig: {
-        maxOutputTokens: 1000,
+        maxOutputTokens: 1200,
         temperature: 0.1
       }
     }
 
     if (enableReasoning) {
       requestBody.generationConfig.thinkingConfig = {
-        thinkingBudget: 1024
+        thinkingBudget: 2048
+      }
+    } else if (chosenModel === MODELS.hydrogen) {
+      // Ограничиваем бюджет мыслей когда рассуждения выключены, чтобы ответ был быстрым (10-15 сек)
+      requestBody.generationConfig.thinkingConfig = {
+        thinkingBudget: 512
       }
     }
 
@@ -397,12 +488,22 @@ AppSideService({
     return finalAnswer
   },
 
-  async callOpenRouter(prompt, modelType, enableReasoning) {
+  async callOpenRouter(prompt, modelType, enableReasoning, enableWebSearch = true) {
     const clearKeywords = ['/clear', 'clear', 'reset', 'new chat', 'clean', 'сброс', 'сбросить', 'новый чат', 'очистить']
     if (clearKeywords.includes(prompt.toLowerCase().trim())) {
       conversationHistory = []
       console.log('[Companion] Context cleared by user keyword')
       return 'Context cleared.'
+    }
+
+    let effectiveUserText = prompt
+    if (enableWebSearch) {
+      try {
+        const snippets = await fetchWebSearch(prompt)
+        if (snippets && snippets.length > 0) {
+          effectiveUserText = `[Current Web Search Results]:\n${snippets.join('\n')}\n\n[User Question]: ${prompt}`
+        }
+      } catch (_) {}
     }
 
     const chosenModel = modelType === 'lite'
@@ -424,7 +525,7 @@ AppSideService({
     }
     messages.push({
       role: 'user',
-      content: prompt
+      content: effectiveUserText
     })
 
     const makeBody = (m) => ({
