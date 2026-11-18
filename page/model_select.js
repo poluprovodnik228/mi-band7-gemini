@@ -14,7 +14,8 @@ Page({
     vibrate: null,
     reasoningBtn: null,
     webSearchBtn: null,
-    modelBtns: {}
+    modelBtns: {},
+    clearBtn: null
   },
 
   onInit() {
@@ -164,7 +165,7 @@ Page({
     })
 
     // 4. Кнопка сброса контекста диалога
-    hmUI.createWidget(hmUI.widget.BUTTON, {
+    this.state.clearBtn = hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 14,
       y: 320,
       w: 164,
@@ -177,13 +178,7 @@ Page({
       press_color: 0x442026,
       click_func: () => {
         this.clickHaptic()
-        if (globalData.messageBuilder) {
-          globalData.messageBuilder.request({ clear: true }).catch(() => {})
-        }
-        globalData.chatMessages = [
-          { role: 'model', text: 'Context cleared. Ready for new questions.' }
-        ]
-        goBack()
+        this.clearContext(globalData)
       }
     })
 
@@ -206,6 +201,34 @@ Page({
     })
   },
 
+  clearContext(globalData) {
+    if (globalData.isClearingContext) return
+    const button = this.state.clearBtn
+    const bridge = globalData.messageBuilder
+    if (!bridge) {
+      button.setProperty(hmUI.prop.TEXT, 'No phone connection')
+      return
+    }
+
+    globalData.isClearingContext = true
+    button.setProperty(hmUI.prop.TEXT, 'Clearing...')
+    return bridge.request({ clear: true }, { timeout: 5000 }).then((res) => {
+      if ((res?.data || res)?.status !== 'ok') throw new Error('Clear not confirmed')
+    }).then(() => {
+      globalData.isClearingContext = false
+      globalData.activeRequest = null
+      globalData.pendingQuestion = null
+      globalData.chatMessages = [
+        { role: 'model', text: 'Context cleared. Ready for new questions.' }
+      ]
+      if (this.state.clearBtn === button) goBack()
+      else if (globalData.onChatChanged) globalData.onChatChanged()
+    }, () => {
+      globalData.isClearingContext = false
+      if (this.state.clearBtn === button) button.setProperty(hmUI.prop.TEXT, 'No confirmation. Retry')
+    })
+  },
+
   updateModelButtons(models) {
     const app = getApp()
     const globalData = (app && app.globalData) ? app.globalData : {}
@@ -221,6 +244,7 @@ Page({
   },
 
   onDestroy() {
+    this.state.clearBtn = null
     if (this.state.vibrate) {
       try {
         this.state.vibrate.stop()

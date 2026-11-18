@@ -1,6 +1,10 @@
 // Main Screen: Gemini AI Chat with Conversation History
 // Optimized for Xiaomi Smart Band 7 (192x490) AMOLED pill display
 
+import { getRequestTimeout } from '../shared/request-timeout'
+
+const BLE_GRACE_MS = 4000
+
 function estimateTextHeight(text, charsPerLine, lineHeight) {
   if (!text) return lineHeight
   const paragraphs = text.split('\n')
@@ -29,9 +33,8 @@ Page({
     bottomSpacer: null,
     pollTimer: null,
     thinkingTimer: null,
-    loadingSeconds: 0,
     vibrate: null,
-    isRequesting: false
+    onChatChanged: null
   },
 
   onInit() {
@@ -56,24 +59,13 @@ Page({
   },
 
   startLoadingTimer() {
-    this.stopLoadingTimer()
-    this.state.loadingSeconds = 0
+    if (this.state.thinkingTimer != null) return
     try {
       if (typeof timer !== 'undefined' && timer.createTimer) {
         this.state.thinkingTimer = timer.createTimer(
           1000,
           1000,
-          () => {
-            if (this.state.isRequesting) {
-              this.state.loadingSeconds = (this.state.loadingSeconds || 0) + 1
-              if (this.state.statusTextWidget) {
-                this.state.statusTextWidget.setProperty(
-                  hmUI.prop.TEXT,
-                  `⏳ Thinking... (${this.state.loadingSeconds}s)`
-                )
-              }
-            }
-          },
+          () => this.refreshStatus(getApp().globalData),
           {}
         )
       }
@@ -81,7 +73,7 @@ Page({
   },
 
   stopLoadingTimer() {
-    if (this.state.thinkingTimer && typeof timer !== 'undefined' && timer.stopTimer) {
+    if (this.state.thinkingTimer != null && typeof timer !== 'undefined' && timer.stopTimer) {
       try {
         timer.stopTimer(this.state.thinkingTimer)
       } catch (_) {}
@@ -198,6 +190,11 @@ Page({
       color: 0x000000
     })
 
+    this.state.onChatChanged = (notify) => {
+      if (notify) this.hapticNotify()
+      this.refreshUI()
+    }
+    globalData.onChatChanged = this.state.onChatChanged
     this.refreshUI()
 
     // Poll for pending question from keyboard
@@ -221,7 +218,7 @@ Page({
     const app = getApp()
     if (!app || !app.globalData) return
 
-    if (app.globalData.pendingQuestion && !this.state.isRequesting) {
+    if (app.globalData.pendingQuestion && !app.globalData.activeRequest && !app.globalData.isClearingContext) {
       const q = app.globalData.pendingQuestion
       app.globalData.pendingQuestion = null
       this.sendQuestion(q)
@@ -241,33 +238,20 @@ Page({
     }
 
     // Append user question and pending model answer
-    globalData.chatMessages.push({ role: 'user', text: promptText })
-    globalData.chatMessages.push({ role: 'model', text: 'Waiting for Gemini response...' })
+    const answer = { role: 'model', text: 'Waiting for Gemini response...' }
+    globalData.chatMessages.push({ role: 'user', text: promptText }, answer)
 
-    // Extended timeout for deep reasoning on Hydrogen (120s) vs Lite (25s)
-    const isHydrogen = (globalData.selectedModel !== 'lite')
-    const reqTimeout = isHydrogen ? 120000 : 25000
-
-    this.state.isRequesting = true
-    globalData.isLoading = true
-    this.startLoadingTimer()
+    const reqTimeout = getRequestTimeout(globalData.selectedModel)
+    const request = { startedAt: Date.now() }
+    globalData.activeRequest = request
     this.refreshUI()
 
-    let finished = false
-    const fallbackTimer = setTimeout(() => {
-      if (!finished) {
-        finished = true
-        this.stopLoadingTimer()
-        this.state.isRequesting = false
-        globalData.isLoading = false
-        const msgs = globalData.chatMessages
-        if (msgs && msgs.length > 0 && msgs[msgs.length - 1].role === 'model') {
-          msgs[msgs.length - 1].text = `⚠️ Request timed out (${Math.round(reqTimeout / 1000)}s).\nCheck smartphone internet.`
-        }
-        this.hapticNotify()
-        this.refreshUI()
-      }
-    }, reqTimeout + 4000)
+    const finish = (text) => {
+      if (globalData.activeRequest !== request) return
+      answer.text = text
+      globalData.activeRequest = null
+      if (globalData.onChatChanged) globalData.onChatChanged(true)
+    }
 
     const mb = globalData.messageBuilder
     if (mb) {
@@ -277,57 +261,32 @@ Page({
         model: globalData.selectedModel,
         reasoning: globalData.enableReasoning,
         webSearch: globalData.enableWebSearch !== false
-      }, { timeout: reqTimeout })
+      }, { timeout: reqTimeout + BLE_GRACE_MS })
       .then((res) => {
-        if (!finished) {
-          finished = true
-          clearTimeout(fallbackTimer)
-          this.stopLoadingTimer()
-          this.state.isRequesting = false
-          globalData.isLoading = false
-          let ans = (res && (res.answer || res.data?.answer || res.text)) || (typeof res === 'string' ? res : 'Empty response')
-          if (res && (res.status === 'error' || res.data?.status === 'error') && !ans.startsWith('⚠️')) {
-            ans = '⚠️ ' + ans
-          }
-          const msgs = globalData.chatMessages
-          if (msgs && msgs.length > 0 && msgs[msgs.length - 1].role === 'model') {
-            msgs[msgs.length - 1].text = ans
-          }
-          this.hapticNotify()
-          this.refreshUI()
+        let ans = (res && (res.answer || res.data?.answer || res.text)) || (typeof res === 'string' ? res : 'Empty response')
+        if (res && (res.status === 'error' || res.data?.status === 'error') && !ans.startsWith('⚠️')) {
+          ans = '⚠️ ' + ans
         }
+        finish(ans)
       })
       .catch((err) => {
-        if (!finished) {
-          finished = true
-          clearTimeout(fallbackTimer)
-          this.stopLoadingTimer()
-          this.state.isRequesting = false
-          globalData.isLoading = false
-          const isTimeout = err && err.message && err.message.toLowerCase().includes('timeout')
-          const errDesc = isTimeout
-            ? `⚠️ Request timed out (${Math.round(reqTimeout / 1000)}s).\nGemini took too long to think.`
-            : '⚠️ Phone connection error.\nCheck Bluetooth and Zepp app.'
-          const msgs = globalData.chatMessages
-          if (msgs && msgs.length > 0 && msgs[msgs.length - 1].role === 'model') {
-            msgs[msgs.length - 1].text = errDesc
-          }
-          this.hapticNotify()
-          this.refreshUI()
-        }
+        const isTimeout = /timeout|timed out/i.test(err && (err.message || err))
+        finish(isTimeout
+          ? '⚠️ Request timed out.\nCheck the Zepp app and phone internet.'
+          : '⚠️ Phone connection error.\nCheck Bluetooth and Zepp app.')
       })
     } else {
-      finished = true
-      clearTimeout(fallbackTimer)
-      this.stopLoadingTimer()
-      this.state.isRequesting = false
-      globalData.isLoading = false
-      const msgs = globalData.chatMessages
-      if (msgs && msgs.length > 0 && msgs[msgs.length - 1].role === 'model') {
-        msgs[msgs.length - 1].text = '⚠️ Bridge module not initialized.'
-      }
-      this.refreshUI()
+      finish('⚠️ Bridge module not initialized.')
     }
+  },
+
+  refreshStatus(globalData) {
+    const widget = this.state.statusTextWidget
+    if (!widget) return
+    const request = globalData.activeRequest
+    const seconds = request ? Math.floor((Date.now() - request.startedAt) / 1000) : 0
+    widget.setProperty(hmUI.prop.TEXT, request ? `⏳ Thinking... (${seconds}s)` : '🟢 Ready for question')
+    widget.setProperty(hmUI.prop.COLOR, request ? 0xFFAA00 : 0x00FF88)
   },
 
   refreshUI() {
@@ -344,16 +303,9 @@ Page({
     }
 
     // 2. Status
-    if (this.state.statusTextWidget) {
-      if (globalData.isLoading) {
-        const sec = this.state.loadingSeconds || 0
-        this.state.statusTextWidget.setProperty(hmUI.prop.TEXT, `⏳ Thinking... (${sec}s)`)
-        this.state.statusTextWidget.setProperty(hmUI.prop.COLOR, 0xFFAA00)
-      } else {
-        this.state.statusTextWidget.setProperty(hmUI.prop.TEXT, '🟢 Ready for question')
-        this.state.statusTextWidget.setProperty(hmUI.prop.COLOR, 0x00FF88)
-      }
-    }
+    this.refreshStatus(globalData)
+    if (globalData.activeRequest) this.startLoadingTimer()
+    else this.stopLoadingTimer()
 
     // 3. Render conversation stream (up to last 6 messages)
     const msgs = (globalData.chatMessages && globalData.chatMessages.length > 0)
@@ -459,6 +411,8 @@ Page({
   },
 
   onDestroy() {
+    const globalData = getApp().globalData
+    if (globalData.onChatChanged === this.state.onChatChanged) globalData.onChatChanged = null
     this.stopLoadingTimer()
     if (this.state.pollTimer && typeof timer !== 'undefined' && timer.stopTimer) {
       try {

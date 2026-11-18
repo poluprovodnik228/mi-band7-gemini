@@ -14,8 +14,9 @@ App({
       }
     ],
     pendingQuestion: null,
-    isLoading: false,
-    onAnswerReceived: null
+    activeRequest: null,
+    isClearingContext: false,
+    onChatChanged: null
   },
 
   onCreate(options) {

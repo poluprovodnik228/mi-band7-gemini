@@ -1,4 +1,5 @@
 import { MessageBuilder } from '../shared/message'
+import { getRequestTimeout, withTimeout } from '../shared/request-timeout'
 
 // Фоновый сервис-компаньон для смартфона (Zepp OS Side Service)
 // Пересылает запросы с браслета в Gemini API и возвращает ответ
@@ -13,15 +14,13 @@ const USE_OPENROUTER = false
 const OPENROUTER_API_KEY = "YOUR_OPENROUTER_API_KEY"
 
 // Конфигурация таймаутов и ограничений BLE
-const REQUEST_TIMEOUT_MS = 120000 // 120s timeout to allow deep reasoning on Hydrogen
+const WEB_SEARCH_TIMEOUT_MS = 3000
 const MAX_BLE_TEXT_LENGTH = 1200 // Лимит буфера BLE на Mi Band 7 (~150-180 слов)
 
 // Модели Google AI Studio
 const MODELS = {
   lite: 'gemini-3.5-flash-lite',
-  hydrogen: 'gemini-4-hydrogen',
-  fallback: 'gemini-3.5-flash-lite',
-  secondaryFallback: 'gemini-3.5-flash-lite'
+  hydrogen: 'gemini-4-hydrogen'
 }
 
 // Smart prompt for wearable smartwatch: brief by default, but detailed when asked
@@ -32,17 +31,18 @@ const SYSTEM_INSTRUCTION =
 const MAX_HISTORY_TURNS = 10
 let conversationHistory = []
 
-function saveToHistory(prompt, answer) {
-  if (!prompt || !answer) return
+function saveToHistory(history, prompt, answer) {
+  // A clear replaces the history array; requests from that conversation must not write to the new one.
+  if (history !== conversationHistory || !prompt || !answer) return
   conversationHistory.push({ role: 'user', text: prompt.trim() })
   conversationHistory.push({ role: 'model', text: answer.trim() })
+  if (conversationHistory.length > MAX_HISTORY_TURNS) conversationHistory.splice(0, 2)
+}
 
-  if (conversationHistory.length > MAX_HISTORY_TURNS) {
-    conversationHistory = conversationHistory.slice(conversationHistory.length - MAX_HISTORY_TURNS)
-    while (conversationHistory.length > 0 && conversationHistory[0].role !== 'user') {
-      conversationHistory.shift()
-    }
-  }
+function timeLeft(deadline) {
+  const remaining = deadline - Date.now()
+  if (remaining <= 0) throw new Error('Request timed out')
+  return remaining
 }
 
 /**
@@ -116,7 +116,7 @@ function isFallbackError(status, data) {
 /**
  * Live Web Search via DuckDuckGo Lite (no API keys, no captcha, real-time facts)
  */
-async function fetchWebSearch(query) {
+async function fetchWebSearch(query, deadline) {
   if (!query || typeof query !== 'string') return []
   const cleanQ = query.trim()
   if (cleanQ.length < 2) return []
@@ -140,6 +140,7 @@ async function fetchWebSearch(query) {
         body: postBody
       })
     } catch (_) {
+      if (Date.now() >= deadline) return []
       try {
         rawRes = await fetch(searchUrl, {
           method: 'POST',
@@ -183,25 +184,28 @@ async function fetchWebSearch(query) {
   }
 }
 
+async function searchWithinBudget(prompt, deadline) {
+  const ms = Math.min(WEB_SEARCH_TIMEOUT_MS, timeLeft(deadline))
+  const searchDeadline = Date.now() + ms
+  try {
+    return await withTimeout(() => fetchWebSearch(prompt, searchDeadline), ms)
+  } catch (_) {
+    return []
+  }
+}
+
 /**
  * HTTP POST запрос с поддержкой Zepp OS Fetch API и таймаута
  */
-async function httpPost(url, payload, options = {}) {
-  const timeoutMs = options.timeout || REQUEST_TIMEOUT_MS
+async function httpPost(url, payload, deadline, extraHeaders = {}) {
+  const timeoutMs = timeLeft(deadline)
   const bodyStr = typeof payload === 'string' ? payload : JSON.stringify(payload)
   const headers = {
     'Content-Type': 'application/json',
-    ...(options.headers || {})
+    ...extraHeaders
   }
 
-  let timer = null
-  const timeoutPromise = new Promise((_, reject) => {
-    timer = setTimeout(() => {
-      reject(new Error(`Connection timeout (${Math.round(timeoutMs / 1000)}s)`))
-    }, timeoutMs)
-  })
-
-  const execRequest = async () => {
+  return withTimeout(async () => {
     let rawRes = null
     try {
       rawRes = await fetch({
@@ -211,6 +215,7 @@ async function httpPost(url, payload, options = {}) {
         body: bodyStr
       })
     } catch (e) {
+      timeLeft(deadline)
       try {
         rawRes = await fetch(url, {
           method: 'POST',
@@ -245,15 +250,7 @@ async function httpPost(url, payload, options = {}) {
     }
 
     return { status, data }
-  }
-
-  try {
-    return await Promise.race([execRequest(), timeoutPromise])
-  } finally {
-    if (timer) {
-      clearTimeout(timer)
-    }
-  }
+  }, timeoutMs)
 }
 
 AppSideService({
@@ -369,8 +366,9 @@ AppSideService({
   },
 
   async callGeminiAPI(prompt, modelType, enableReasoning, enableWebSearch = true) {
+    const deadline = Date.now() + getRequestTimeout(modelType)
     if (USE_OPENROUTER) {
-      return this.callOpenRouter(prompt, modelType, enableReasoning, enableWebSearch)
+      return this.callOpenRouter(prompt, modelType, enableWebSearch, deadline)
     }
 
     const clearKeywords = ['/clear', 'clear', 'reset', 'new chat', 'clean', 'сброс', 'сбросить', 'новый чат', 'очистить']
@@ -380,15 +378,16 @@ AppSideService({
       return 'Context cleared.'
     }
 
+    const history = conversationHistory
     // Google AI Studio API:
     const chosenModel = modelType === 'lite' ? MODELS.lite : MODELS.hydrogen
-    const fallbackModel = (chosenModel === MODELS.fallback) ? MODELS.secondaryFallback : MODELS.fallback
+    const fallbackModel = MODELS.lite
 
     // 1. Live Web Search: получаем свежие факты из интернета при включенном поиске
     let effectiveUserText = prompt
     if (enableWebSearch) {
       try {
-        const snippets = await fetchWebSearch(prompt)
+        const snippets = await searchWithinBudget(prompt, deadline)
         if (snippets && snippets.length > 0) {
           effectiveUserText = `[Current Web Search Results]:\n${snippets.join('\n')}\n\n[User Question]: ${prompt}\n(Answer concisely using the latest real-time web info above if relevant)`
           console.log(`[Companion] Injected ${snippets.length} web search snippets into prompt`)
@@ -400,7 +399,7 @@ AppSideService({
 
     // Формируем историю диалога (чередование user -> model -> user -> model)
     const contents = []
-    for (const msg of conversationHistory) {
+    for (const msg of history) {
       contents.push({
         role: msg.role === 'model' ? 'model' : 'user',
         parts: [{ text: msg.text }]
@@ -437,16 +436,17 @@ AppSideService({
     const makeUrl = (m) =>
       `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${GEMINI_API_KEY}`
 
-    console.log(`[Companion] Requesting Gemini model: ${chosenModel} (контекст: ${conversationHistory.length / 2} раундов)`)
-    let res = await httpPost(makeUrl(chosenModel), requestBody, { timeout: REQUEST_TIMEOUT_MS })
+    console.log(`[Companion] Requesting Gemini model: ${chosenModel} (контекст: ${history.length / 2} раундов)`)
+    let res = await httpPost(makeUrl(chosenModel), requestBody, deadline)
 
     // Автоматический откат на облегченную модель при 404, 429 или 503
     if (isFallbackError(res.status, res.data)) {
       console.warn(
         `[Companion] Model ${chosenModel} returned ${res.status} (${res.data?.error?.message || 'Quota/Network error'}). Falling back to ${fallbackModel}...`
       )
-      res = await httpPost(makeUrl(fallbackModel), requestBody, { timeout: REQUEST_TIMEOUT_MS })
+      res = await httpPost(makeUrl(fallbackModel), requestBody, deadline)
     }
+    timeLeft(deadline)
 
     if (res.data?.error) {
       throw new Error(res.data.error.message || `API Error (${res.status})`)
@@ -483,12 +483,12 @@ AppSideService({
     }
 
     if (finalAnswer && !finalAnswer.startsWith('Empty response') && !finalAnswer.startsWith('Response truncated')) {
-      saveToHistory(prompt, finalAnswer)
+      saveToHistory(history, prompt, finalAnswer)
     }
     return finalAnswer
   },
 
-  async callOpenRouter(prompt, modelType, enableReasoning, enableWebSearch = true) {
+  async callOpenRouter(prompt, modelType, enableWebSearch, deadline) {
     const clearKeywords = ['/clear', 'clear', 'reset', 'new chat', 'clean', 'сброс', 'сбросить', 'новый чат', 'очистить']
     if (clearKeywords.includes(prompt.toLowerCase().trim())) {
       conversationHistory = []
@@ -496,10 +496,11 @@ AppSideService({
       return 'Context cleared.'
     }
 
+    const history = conversationHistory
     let effectiveUserText = prompt
     if (enableWebSearch) {
       try {
-        const snippets = await fetchWebSearch(prompt)
+        const snippets = await searchWithinBudget(prompt, deadline)
         if (snippets && snippets.length > 0) {
           effectiveUserText = `[Current Web Search Results]:\n${snippets.join('\n')}\n\n[User Question]: ${prompt}`
         }
@@ -517,7 +518,7 @@ AppSideService({
         content: SYSTEM_INSTRUCTION
       }
     ]
-    for (const msg of conversationHistory) {
+    for (const msg of history) {
       messages.push({
         role: msg.role === 'model' ? 'assistant' : 'user',
         content: msg.text
@@ -540,14 +541,15 @@ AppSideService({
       Authorization: `Bearer ${OPENROUTER_API_KEY}`
     }
 
-    console.log(`[Companion] Requesting OpenRouter model: ${chosenModel} (context: ${conversationHistory.length / 2} turns)`)
-    let res = await httpPost(url, makeBody(chosenModel), { headers, timeout: REQUEST_TIMEOUT_MS })
+    console.log(`[Companion] Requesting OpenRouter model: ${chosenModel} (context: ${history.length / 2} turns)`)
+    let res = await httpPost(url, makeBody(chosenModel), deadline, headers)
 
     // Fallback для OpenRouter при 404, 429, 503
     if (isFallbackError(res.status, res.data) && chosenModel !== fallbackModel) {
       console.warn(`[Companion] OpenRouter model ${chosenModel} returned ${res.status}. Falling back to ${fallbackModel}...`)
-      res = await httpPost(url, makeBody(fallbackModel), { headers, timeout: REQUEST_TIMEOUT_MS })
+      res = await httpPost(url, makeBody(fallbackModel), deadline, headers)
     }
+    timeLeft(deadline)
 
     if (res.data?.error) {
       throw new Error(res.data.error.message || `OpenRouter Error (${res.status})`)
@@ -555,7 +557,7 @@ AppSideService({
 
     const rawResult = res.data?.choices?.[0]?.message?.content?.trim() || 'Empty response'
     const finalAnswer = stripFluff(rawResult)
-    saveToHistory(prompt, finalAnswer)
+    saveToHistory(history, prompt, finalAnswer)
     return finalAnswer
   },
 

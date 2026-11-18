@@ -4,6 +4,7 @@ import { EventBus } from './event'
 import { Deferred, timeout } from './defer'
 import { json2Buf, buf2Json, buf2hex, bin2hex, bin2json, str2buf } from './data'
 import { isHmBleDefined, isHmAppDefined } from './js-module'
+import { withTimeout } from './request-timeout'
 
 let logger
 
@@ -789,55 +790,29 @@ export class MessageBuilder extends EventBus {
     session.addChunk(payload)
   }
 
-  request(data, opts) {
-    const _request = () => {
-      const defaultOpts = { timeout: 60000 }
-      const requestId = genTraceId()
-      const defer = Deferred()
-      opts = Object.assign(defaultOpts, opts)
-
-      const error = (error) => {
-        this.off('error', error)
+  request(data, { timeout: timeoutMs = 60000 } = {}) {
+    const requestId = genTraceId()
+    const defer = Deferred()
+    const deadline = Date.now() + timeoutMs
+    const transact = ({ traceId, payload }) => {
+      if (traceId !== requestId) return
+      try {
+        defer.resolve(this.buf2Json(payload))
+      } catch (error) {
         defer.reject(error)
       }
-
-      const transact = ({ traceId, payload }) => {
-        // logger.debug('traceId=>%d payload=>%s', traceId, payload.toString('hex'))
-        if (traceId === requestId) {
-          const resultJson = this.buf2Json(payload)
-          // logger.debug('request id=>%d payload=>%j', requestId, data)
-          // logger.debug('response id=>%d payload=>%j', requestId, resultJson)
-
-          this.off('response', transact)
-          this.off('error', error)
-          defer.resolve(resultJson)
-        }
-      }
-
-      this.on('response', transact)
-      this.on('error', error)
-      this.sendJson({ requestId, json: data, type: MessagePayloadType.Request })
-
-      let hasReturned = false
-
-      return Promise.race([
-        timeout(opts.timeout, (resolve, reject) => {
-          if (hasReturned) {
-            return resolve()
-          }
-
-          // logger.error(`request timeout in ${opts.timeout}ms error=> %d data=> %j`, requestId, data)
-          this.off('response', transact)
-
-          reject(Error(`Timed out in ${opts.timeout}ms.`))
-        }),
-        defer.promise.finally(() => {
-          hasReturned = true
-        }),
-      ])
     }
 
-    return this.waitingShakePromise.then(_request)
+    return withTimeout(() => this.waitingShakePromise.then(() => {
+      if (Date.now() >= deadline) throw new Error('Request timed out')
+      this.on('response', transact)
+      this.on('error', defer.reject)
+      this.sendJson({ requestId, json: data, type: MessagePayloadType.Request })
+      return defer.promise
+    }), timeoutMs).finally(() => {
+      this.off('response', transact)
+      this.off('error', defer.reject)
+    })
   }
 
   requestCb(data, opts, cb) {
