@@ -15,10 +15,20 @@ A full-featured standalone Google Gemini AI client for **Xiaomi Smart Band 7 (Ze
   * **Smart Auto-Fit:** Adaptive font scaling ensures the text input field never clips the beginning of long queries.
   * **Haptic Feedback:** Discrete vibration on every keypress.
 
-* **Dual AI Model Selection:**
+* **Dual AI Model Selection & Thinking Budget:**
   * **⚡ Gemini 3.5 Flash-Lite:** Ultra-fast responses (< 0.8s) for quick facts, dates, translations, and definitions.
   * **🧠 Gemini 4 Hydrogen:** Google's deep reasoning model for complex questions, logic, math, and code.
-  * **Reasoning Toggle (💭):** Turn extended thinking budget on or off.
+  * **Reasoning Toggle (`[ 💭 Think: ON/OFF ]`):** Turn extended thinking budget on (2048 tokens) or off (512 tokens).
+  * **Adaptive 120s Timeout:** Client and companion accommodate extended reasoning phases with a live seconds counter.
+
+* **🌐 Live Web Search Grounding:**
+  * Real-time internet search toggle (`[ 🌐 Web: ON/OFF ]`).
+  * Fetches fresh facts, weather, news, and crypto/stock prices via zero-config companion scraping.
+  * Completely free with no API quota limits or external search fees.
+
+* **💬 Multi-Turn Context Memory:**
+  * Retains previous conversation turns for natural back-and-forth dialogue on the wrist.
+  * Dedicated **Clear Context** button in model settings to start fresh anytime.
 
 * **OLED Cyberpunk UI:**
   * High-contrast cards for User Queries (`👤 YOU:`) and AI Responses (`✨ GEMINI AI:`).
@@ -95,6 +105,8 @@ The compiled package will be generated inside the `dist/` directory as a `.zab` 
 * **33 буквы русского алфавита** на 3 страницах + английский + цифры.
 * Переключение регистра **Caps/Shift** (`[ ⇧ А ]` / `[ ⇩ а ]`).
 * Две модели: **⚡ Gemini 3.5 Flash-Lite** (быстрая) и **🧠 Gemini 4 Hydrogen** (глубокие рассуждения).
+* **🌐 Поиск в интернете (Web Grounding):** Тумблер `[ 🌐 Web: ON/OFF ]` подтягивает свежие курсы валют, погоду и факты в реальном времени.
+* **💬 Память диалога:** Сохранение контекста между сообщениями + кнопка сброса.
 * Бесплатный ключ настраивается в `app-side/index.js`. Сборка через `zeus build`.
 
 ---

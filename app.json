@@ -10,7 +10,7 @@
     },
     "icon": "icon.png",
     "vender": "Community",
-    "description": "Gemini AI client with T9 keyboard for Mi Band 7"
+    "description": "Standalone Gemini AI client with Live Web Grounding and full keyboard for Mi Band 7"
   },
   "permissions": [
     "device:os.bg_service"
