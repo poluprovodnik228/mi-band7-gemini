@@ -1,5 +1,6 @@
 // Экран настройки и выбора модели Gemini AI
 // Обновленный OLED дизайн
+import { vibrateClick } from '../shared/vibrate'
 
 function goBack() {
   if (typeof hmApp !== 'undefined' && hmApp.goBack) {
@@ -11,32 +12,16 @@ function goBack() {
 
 Page({
   state: {
-    vibrate: null,
     reasoningBtn: null,
     webSearchBtn: null,
     modelBtns: {},
     clearBtn: null
   },
 
-  onInit() {
-    try {
-      if (typeof hmSensor !== 'undefined' && hmSensor.createSensor && hmSensor.id && hmSensor.id.VIBRATE) {
-        this.state.vibrate = hmSensor.createSensor(hmSensor.id.VIBRATE)
-      }
-    } catch (e) {
-      console.log('[ModelSelect Vibrate Init Error]', e)
-    }
-  },
+  onInit() {},
 
   clickHaptic() {
-    const v = this.state.vibrate
-    if (v) {
-      try {
-        v.stop()
-        v.scene = 24
-        v.start()
-      } catch (e) {}
-    }
+    vibrateClick()
   },
 
   build() {
@@ -83,6 +68,7 @@ Page({
       click_func: () => {
         this.clickHaptic()
         globalData.enableReasoning = !globalData.enableReasoning
+        if (globalData.saveAppState) globalData.saveAppState()
         const isEnabled = globalData.enableReasoning
         this.state.reasoningBtn.setProperty(
           hmUI.prop.TEXT,
@@ -111,6 +97,7 @@ Page({
       click_func: () => {
         this.clickHaptic()
         globalData.enableWebSearch = (globalData.enableWebSearch === false) ? true : false
+        if (globalData.saveAppState) globalData.saveAppState()
         const active = (globalData.enableWebSearch !== false)
         this.state.webSearchBtn.setProperty(
           hmUI.prop.TEXT,
@@ -123,32 +110,35 @@ Page({
       }
     })
 
-    // 3. Две целевые модели (Hydrogen по умолчанию)
+    // 3. Три целевые модели (Hydrogen по умолчанию)
     const models = [
       {
         id: 'hydrogen',
         title: '🧠 4 Hydrogen',
-        tag: 'DEFAULT',
-        subtitle: 'Deep reasoning, code\nPrecise Gemini 4 logic'
+        subtitle: 'Deep reasoning & logic'
+      },
+      {
+        id: 'flash38',
+        title: '⚡ 3.8 Flash',
+        subtitle: 'Latest balanced speed'
       },
       {
         id: 'lite',
-        title: '⚡ 3.5 Flash-Lite',
-        tag: 'FAST MODE',
-        subtitle: 'Instant answer (<0.8s)\nFacts, translation, search'
+        title: '💡 3.5 Flash-Lite',
+        subtitle: 'Fastest reply (<1.0s)'
       }
     ]
 
-    let startY = 104
+    let startY = 98
     models.forEach((m) => {
       const isSelected = (globalData.selectedModel || 'hydrogen') === m.id
       const btn = hmUI.createWidget(hmUI.widget.BUTTON, {
         x: 10,
         y: startY,
         w: 172,
-        h: 96,
-        radius: 14,
-        text: `${isSelected ? '◉ ' : '○ '}${m.title}\n[${m.tag}]\n${m.subtitle}`,
+        h: 64,
+        radius: 13,
+        text: `${isSelected ? '◉ ' : '○ '}${m.title}\n${m.subtitle}`,
         text_size: 12,
         color: isSelected ? 0x00F0FF : 0xAAAAAA,
         normal_color: isSelected ? 0x003366 : 0x141A24,
@@ -156,20 +146,21 @@ Page({
         click_func: () => {
           this.clickHaptic()
           globalData.selectedModel = m.id
+          if (globalData.saveAppState) globalData.saveAppState()
           this.updateModelButtons(models)
           goBack()
         }
       })
       this.state.modelBtns[m.id] = btn
-      startY += 104
+      startY += 70
     })
 
     // 4. Кнопка сброса контекста диалога
     this.state.clearBtn = hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 14,
-      y: 320,
+      y: 312,
       w: 164,
-      h: 44,
+      h: 42,
       radius: 14,
       text: '🧹 Clear Context',
       text_size: 13,
@@ -185,10 +176,10 @@ Page({
     // 5. Кнопка возврата в чат
     hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 14,
-      y: 374,
+      y: 362,
       w: 164,
-      h: 46,
-      radius: 23,
+      h: 44,
+      radius: 22,
       text: '← Back to Chat',
       text_size: 15,
       color: 0xFFFFFF,
@@ -221,6 +212,7 @@ Page({
       globalData.chatMessages = [
         { role: 'model', text: 'Context cleared. Ready for new questions.' }
       ]
+      if (globalData.saveAppState) globalData.saveAppState()
       if (this.state.clearBtn === button) goBack()
       else if (globalData.onChatChanged) globalData.onChatChanged()
     }, () => {
@@ -233,10 +225,10 @@ Page({
     const app = getApp()
     const globalData = (app && app.globalData) ? app.globalData : {}
     models.forEach((m) => {
-      const isSelected = globalData.selectedModel === m.id
+      const isSelected = (globalData.selectedModel || 'hydrogen') === m.id
       const btn = this.state.modelBtns[m.id]
       if (btn) {
-        btn.setProperty(hmUI.prop.TEXT, `${isSelected ? '◉ ' : '○ '}${m.title}\n[${m.tag}]\n${m.subtitle}`)
+        btn.setProperty(hmUI.prop.TEXT, `${isSelected ? '◉ ' : '○ '}${m.title}\n${m.subtitle}`)
         btn.setProperty(hmUI.prop.COLOR, isSelected ? 0x00F0FF : 0xAAAAAA)
         btn.setProperty(hmUI.prop.NORMAL_COLOR, isSelected ? 0x003366 : 0x141A24)
       }
@@ -245,11 +237,5 @@ Page({
 
   onDestroy() {
     this.state.clearBtn = null
-    if (this.state.vibrate) {
-      try {
-        this.state.vibrate.stop()
-      } catch (e) {}
-      this.state.vibrate = null
-    }
   }
 })

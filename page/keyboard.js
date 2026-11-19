@@ -1,6 +1,7 @@
 // Клавиатура с прямым побуквенным вводом (2-3 страницы на весь алфавит)
 // Поддержка строчных и заглавных букв (Caps/Shift), переключение языков (RU/EN)
 // Оптимизировано под дисплей Xiaomi Smart Band 7 (192x490) с защитой от скруглений и плавания виджетов
+import { vibrateClick } from '../shared/vibrate'
 
 function goBack() {
   if (typeof hmApp !== 'undefined' && hmApp.goBack) {
@@ -71,31 +72,28 @@ Page({
     tabWidgets: [],
     keyWidgets: [],
     langWidget: null,
-    shiftWidget: null,
-    vibrate: null
+    shiftWidget: null
   },
 
-  onInit() {
-    try {
-      if (typeof hmSensor !== 'undefined' && hmSensor.createSensor && hmSensor.id && hmSensor.id.VIBRATE) {
-        this.state.vibrate = hmSensor.createSensor(hmSensor.id.VIBRATE)
-      }
-    } catch (e) {
-      console.log('[Keyboard Vibrate Init]', e)
-    }
-  },
+  onInit() {},
 
   hapticClick() {
-    if (this.state.vibrate) {
-      try {
-        this.state.vibrate.stop()
-        this.state.vibrate.scene = 24
-        this.state.vibrate.start()
-      } catch (e) {}
+    vibrateClick()
+  },
+
+  syncDraft() {
+    const app = getApp()
+    if (app && app.globalData) {
+      app.globalData.keyboardDraft = this.state.text
     }
   },
 
   build() {
+    const app = getApp()
+    if (app && app.globalData && typeof app.globalData.keyboardDraft === 'string') {
+      this.state.text = app.globalData.keyboardDraft
+    }
+
     if (typeof hmUI.setLayerScrolling === 'function') {
       hmUI.setLayerScrolling(false)
     }
@@ -260,6 +258,7 @@ Page({
       click_func: () => {
         this.hapticClick()
         this.state.text += ' '
+        this.syncDraft()
         this.updateTextUI()
       }
     })
@@ -280,6 +279,7 @@ Page({
         this.hapticClick()
         if (this.state.text.length > 0) {
           this.state.text = this.state.text.slice(0, -1)
+          this.syncDraft()
           this.updateTextUI()
         }
       }
@@ -375,6 +375,7 @@ Page({
     const char = pageChars[index]
     if (char) {
       this.state.text += char
+      this.syncDraft()
       this.updateTextUI()
     }
   },
@@ -436,13 +437,18 @@ Page({
       this.state.textWidget.setProperty(hmUI.prop.TEXT, 'Enter question...')
       this.state.textWidget.setProperty(hmUI.prop.COLOR, 0x556677)
     } else {
-      // Адаптивный размер шрифта: текст любого объема помещается целиком, начало не срезается
       let fSize = 15
-      if (t.length > 40) {
+      let displayText = t
+      // Если текст длинный, показываем конец строки (где сейчас печатаешь)
+      if (t.length > 45) {
+        fSize = 11
+        displayText = '…' + t.slice(-42)
+      } else if (t.length > 32) {
         fSize = 12
-      } else if (t.length > 22) {
+      } else if (t.length > 18) {
         fSize = 13
       }
+
       this.state.textWidget.setProperty(hmUI.prop.MORE, {
         x: 22,
         y: 38,
@@ -453,7 +459,7 @@ Page({
         align_h: hmUI.align.LEFT
       })
       this.state.textWidget.setProperty(hmUI.prop.COLOR, 0x00FFCC)
-      this.state.textWidget.setProperty(hmUI.prop.TEXT, t)
+      this.state.textWidget.setProperty(hmUI.prop.TEXT, displayText)
     }
   },
 
@@ -463,20 +469,25 @@ Page({
       const app = getApp()
       if (app && app.globalData) {
         app.globalData.pendingQuestion = trimmed
+        app.globalData.keyboardDraft = ''
+        this.state.text = ''
+        if (app.globalData.saveAppState) {
+          app.globalData.saveAppState()
+        }
       }
     }
     goBack()
   },
 
   onDestroy() {
+    this.syncDraft()
+    const app = getApp()
+    if (app && app.globalData && app.globalData.saveAppState) {
+      app.globalData.saveAppState()
+    }
     if (typeof hmApp !== 'undefined' && hmApp.unregisterGestureEvent) {
       try {
         hmApp.unregisterGestureEvent()
-      } catch (e) {}
-    }
-    if (this.state.vibrate) {
-      try {
-        this.state.vibrate.stop()
       } catch (e) {}
     }
   }

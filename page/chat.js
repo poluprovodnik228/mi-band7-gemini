@@ -2,6 +2,7 @@
 // Optimized for Xiaomi Smart Band 7 (192x490) AMOLED pill display
 
 import { getRequestTimeout } from '../shared/request-timeout'
+import { vibrateClick, vibrateNotify } from '../shared/vibrate'
 
 const BLE_GRACE_MS = 4000
 
@@ -24,6 +25,16 @@ function navigateTo(url) {
   }
 }
 
+function getModelBadgeText(globalData) {
+  let name = '🧠 Hydrogen'
+  if (globalData.selectedModel === 'flash38') name = '⚡ 3.8 Flash'
+  else if (globalData.selectedModel === 'lite') name = '💡 3.5 Lite'
+
+  const web = (globalData.enableWebSearch !== false) ? ' 🌐' : ''
+  const rsn = globalData.enableReasoning ? ' 💭' : ''
+  return `${name}${web}${rsn} ⚙️`
+}
+
 Page({
   state: {
     modelBtnWidget: null,
@@ -33,29 +44,16 @@ Page({
     bottomSpacer: null,
     pollTimer: null,
     thinkingTimer: null,
-    vibrate: null,
-    onChatChanged: null
+    onChatChanged: null,
+    isDestroyed: false
   },
 
   onInit() {
     console.log('[Chat Page] Init')
-    try {
-      if (typeof hmSensor !== 'undefined' && hmSensor.createSensor && hmSensor.id && hmSensor.id.VIBRATE) {
-        this.state.vibrate = hmSensor.createSensor(hmSensor.id.VIBRATE)
-      }
-    } catch (e) {
-      console.log('[Chat Vibrate Init Error]', e)
-    }
   },
 
   hapticNotify() {
-    if (this.state.vibrate) {
-      try {
-        this.state.vibrate.stop()
-        this.state.vibrate.scene = 24
-        this.state.vibrate.start()
-      } catch (e) {}
-    }
+    vibrateNotify()
   },
 
   startLoadingTimer() {
@@ -89,10 +87,7 @@ Page({
     // 1. Model selection capsule at top (safe zone y=28, x=24)
     const app = getApp()
     const globalData = (app && app.globalData) ? app.globalData : {}
-    const isHydrogen = (globalData.selectedModel !== 'lite')
-    const initModel = (isHydrogen ? '🧠 4 Hydrogen' : '⚡ 3.5 Lite') +
-                      (globalData.enableWebSearch !== false ? ' 🌐' : '') +
-                      (globalData.enableReasoning ? ' 💭' : '') + ' ⚙️'
+    const initModel = getModelBadgeText(globalData)
 
     this.state.modelBtnWidget = hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 14,
@@ -106,7 +101,7 @@ Page({
       press_color: 0x222E40,
       text_size: 12,
       click_func: () => {
-        this.hapticNotify()
+        vibrateClick()
         navigateTo('page/model_select')
       }
     })
@@ -176,7 +171,7 @@ Page({
       normal_color: 0x0066FF,
       press_color: 0x0044CC,
       click_func: () => {
-        this.hapticNotify()
+        vibrateClick()
         navigateTo('page/keyboard')
       }
     })
@@ -240,16 +235,25 @@ Page({
     // Append user question and pending model answer
     const answer = { role: 'model', text: 'Waiting for Gemini response...' }
     globalData.chatMessages.push({ role: 'user', text: promptText }, answer)
+    if (globalData.saveAppState) globalData.saveAppState()
 
     const reqTimeout = getRequestTimeout(globalData.selectedModel)
     const request = { startedAt: Date.now() }
     globalData.activeRequest = request
     this.refreshUI()
 
-    const finish = (text) => {
+    const finish = (text, isError = false) => {
       if (globalData.activeRequest !== request) return
-      answer.text = text
       globalData.activeRequest = null
+      if (this.state.isDestroyed && isError) {
+        // При прерывании уведомлением/выходом не пишем ошибку, убираем заглушку ожидания
+        const idx = globalData.chatMessages.indexOf(answer)
+        if (idx !== -1) globalData.chatMessages.splice(idx, 1)
+        if (globalData.saveAppState) globalData.saveAppState()
+        return
+      }
+      answer.text = text
+      if (globalData.saveAppState) globalData.saveAppState()
       if (globalData.onChatChanged) globalData.onChatChanged(true)
     }
 
@@ -267,16 +271,20 @@ Page({
         if (res && (res.status === 'error' || res.data?.status === 'error') && !ans.startsWith('⚠️')) {
           ans = '⚠️ ' + ans
         }
-        finish(ans)
+        finish(ans, false)
       })
       .catch((err) => {
+        if (this.state.isDestroyed) {
+          finish('', true)
+          return
+        }
         const isTimeout = /timeout|timed out/i.test(err && (err.message || err))
         finish(isTimeout
           ? '⚠️ Request timed out.\nCheck the Zepp app and phone internet.'
-          : '⚠️ Phone connection error.\nCheck Bluetooth and Zepp app.')
+          : '⚠️ Phone connection error.\nCheck Bluetooth and Zepp app.', true)
       })
     } else {
-      finish('⚠️ Bridge module not initialized.')
+      finish('⚠️ Bridge module not initialized.', true)
     }
   },
 
@@ -295,9 +303,7 @@ Page({
     const isHydrogen = (globalData.selectedModel !== 'lite')
 
     // 1. Model Badge with Internet & Reasoning icons
-    const modelLabel = (isHydrogen ? '🧠 4 Hydrogen' : '⚡ 3.5 Lite') +
-                       (globalData.enableWebSearch !== false ? ' 🌐' : '') +
-                       (globalData.enableReasoning ? ' 💭' : '') + ' ⚙️'
+    const modelLabel = getModelBadgeText(globalData)
     if (this.state.modelBtnWidget) {
       this.state.modelBtnWidget.setProperty(hmUI.prop.TEXT, modelLabel)
     }
@@ -411,6 +417,7 @@ Page({
   },
 
   onDestroy() {
+    this.state.isDestroyed = true
     const globalData = getApp().globalData
     if (globalData.onChatChanged === this.state.onChatChanged) globalData.onChatChanged = null
     this.stopLoadingTimer()

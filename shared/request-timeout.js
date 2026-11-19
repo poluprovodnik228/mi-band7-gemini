@@ -1,5 +1,7 @@
 export function getRequestTimeout(model) {
-  return model === 'lite' ? 25000 : 120000
+  if (model === 'lite') return 25000
+  if (model === 'flash38') return 45000
+  return 120000 // hydrogen or default
 }
 
 export function withTimeout(run, ms) {

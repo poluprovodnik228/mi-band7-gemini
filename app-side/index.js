@@ -20,6 +20,7 @@ const MAX_BLE_TEXT_LENGTH = 1200 // Лимит буфера BLE на Mi Band 7 (
 // Модели Google AI Studio
 const MODELS = {
   lite: 'gemini-3.5-flash-lite',
+  flash38: 'gemini-3.8-flash',
   hydrogen: 'gemini-4-hydrogen'
 }
 
@@ -92,6 +93,17 @@ function sanitizeForBLE(text, maxLength = MAX_BLE_TEXT_LENGTH) {
   }
 
   return trimmed.slice(0, cutIndex).trim() + suffix
+}
+
+/**
+ * Проверка перегрузки серверов (503 High Demand, 429 Quota)
+ */
+function isOverloadError(status, data) {
+  const code = status || data?.error?.code
+  const statusStr = data?.error?.status || ''
+  const msg = (data?.error?.message || '').toLowerCase()
+  return code === 503 || code === 429 || statusStr === 'UNAVAILABLE' || statusStr === 'RESOURCE_EXHAUSTED' ||
+         msg.includes('high demand') || msg.includes('quota') || msg.includes('rate limit') || msg.includes('overload') || msg.includes('spikes in demand')
 }
 
 /**
@@ -274,6 +286,17 @@ AppSideService({
         }
         console.log('[Companion] Request data:', payload)
 
+        if (payload && payload.ping) {
+          ctx.response({
+            data: {
+              status: 'ok',
+              pong: true,
+              timestamp: Date.now()
+            }
+          })
+          return
+        }
+
         if (payload && payload.clear) {
           conversationHistory = []
           console.log('[Companion] Context explicitly cleared by user')
@@ -380,8 +403,10 @@ AppSideService({
 
     const history = conversationHistory
     // Google AI Studio API:
-    const chosenModel = modelType === 'lite' ? MODELS.lite : MODELS.hydrogen
-    const fallbackModel = MODELS.lite
+    const chosenModel = MODELS[modelType] || MODELS.hydrogen
+    const modelChain = modelType === 'hydrogen'
+      ? [MODELS.hydrogen, MODELS.flash38, MODELS.lite]
+      : (modelType === 'flash38' ? [MODELS.flash38, MODELS.lite] : [MODELS.lite])
 
     // 1. Live Web Search: получаем свежие факты из интернета при включенном поиске
     let effectiveUserText = prompt
@@ -436,21 +461,49 @@ AppSideService({
     const makeUrl = (m) =>
       `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${GEMINI_API_KEY}`
 
-    console.log(`[Companion] Requesting Gemini model: ${chosenModel} (контекст: ${history.length / 2} раундов)`)
-    let res = await httpPost(makeUrl(chosenModel), requestBody, deadline)
+    let res = null
+    let lastError = null
+    let fallbackNotice = ''
 
-    // Автоматический откат на облегченную модель при 404, 429 или 503
-    if (isFallbackError(res.status, res.data)) {
-      console.warn(
-        `[Companion] Model ${chosenModel} returned ${res.status} (${res.data?.error?.message || 'Quota/Network error'}). Falling back to ${fallbackModel}...`
-      )
-      res = await httpPost(makeUrl(fallbackModel), requestBody, deadline)
+    for (let i = 0; i < modelChain.length; i++) {
+      const currentModel = modelChain[i]
+      try {
+        console.log(`[Companion] Requesting Gemini model: ${currentModel} (${i + 1}/${modelChain.length}, контекст: ${history.length / 2} раунд.)`)
+        timeLeft(deadline)
+        res = await httpPost(makeUrl(currentModel), requestBody, deadline)
+
+        if (isOverloadError(res.status, res.data)) {
+          throw new Error('Overload: ' + (res.data?.error?.message || `Server high demand (${res.status})`))
+        } else if (isFallbackError(res.status, res.data)) {
+          throw new Error(`Fallback required: status ${res.status}`)
+        }
+
+        if (res.data?.error) {
+          throw new Error(res.data.error.message || `API Error (${res.status})`)
+        }
+
+        if (i > 0) {
+          const name = currentModel === MODELS.flash38 ? '3.8 Flash' : '3.5 Flash-Lite'
+          fallbackNotice = `⚠️ Сервера перегружены (503 High Demand).\nОтвет через ${name}:\n\n`
+          console.warn(`[Companion] Succeeded with fallback model: ${currentModel}`)
+        }
+        break
+      } catch (err) {
+        lastError = err
+        if (/timeout|timed out/i.test(err.message)) {
+          throw err
+        }
+        const isOverload = isOverloadError(res?.status, res?.data) || /overload|503|demand|unavailable|quota|rate limit/i.test(err.message)
+        console.warn(`[Companion] Model ${currentModel} failed (${err.message}). ${i < modelChain.length - 1 ? 'Trying next in chain...' : 'Chain exhausted.'}`)
+        if (i === modelChain.length - 1) {
+          if (isOverload || /overload|503|demand|unavailable|quota|rate limit/i.test(lastError.message)) {
+            throw new Error('⚠️ Сервера Google перегружены (503 High Demand). Попробуйте позже.')
+          }
+          throw lastError
+        }
+      }
     }
     timeLeft(deadline)
-
-    if (res.data?.error) {
-      throw new Error(res.data.error.message || `API Error (${res.status})`)
-    }
 
     const candidate = res.data?.candidates?.[0]
     if (!candidate || !candidate.content || !candidate.content.parts) {
@@ -484,6 +537,9 @@ AppSideService({
 
     if (finalAnswer && !finalAnswer.startsWith('Empty response') && !finalAnswer.startsWith('Response truncated')) {
       saveToHistory(history, prompt, finalAnswer)
+    }
+    if (fallbackNotice) {
+      finalAnswer = fallbackNotice + finalAnswer
     }
     return finalAnswer
   },
