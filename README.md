@@ -67,7 +67,7 @@
 
 ---
 
-## 📲 Installation Guide (3 Pathways)
+## 📲 Installation Guide (2 Ways to Install)
 
 ### Step 1. Prepare the Zepp App
 
@@ -102,19 +102,7 @@ The cleanest and most trusted way for end-users. Build your personal package dir
 
 ---
 
-### Method 2. In-Browser Client-Side Patcher (GitHub Pages)
-
-If you prefer to download the `.zpk` file directly to your phone without running GitHub Actions:
-
-1. Open the [Gemini Band Web Portal](https://poluprovodnik228.github.io/mi-band7-gemini/) on your computer or smartphone.
-2. Paste your Google Gemini API key into the field.
-3. Click **Patch & Download .zpk**.
-4. The `.zpk` package is patched **100% in your browser's local memory** using JSZip. Your API key never leaves your device and is never sent to any server.
-5. Install the downloaded `.zpk` file onto your band using Zepp Developer Mode or *Notify for Xiaomi*.
-
----
-
-### Method 3. Compile & Build from Source (Offline Zeus CLI)
+### Method 2. Compile & Build from Source (Offline Zeus CLI)
 
 For developers who want to compile their own package locally from raw source code:
 
@@ -175,7 +163,7 @@ mi-band7-gemini/
 │   └── scripts/
 │       └── generate_release_assets.py # QR generator (raw direct 200 OK links)
 ├── docs/
-│   ├── index.html                # GitHub Pages portal & in-browser JSZip patcher
+│   ├── index.html                # GitHub Pages documentation portal
 │   ├── gemini_band.zpk           # Base template package
 │   └── icon.png                  # Project web asset
 ├── app.json                      # Zepp OS 1.0 manifest (Amazfit Band 7 targets: 252, 253, 254)
@@ -209,7 +197,7 @@ mi-band7-gemini/
 * **🔔 Защита от сбоев:** При звонках, уведомлениях или выключении экрана генерация ответа на смартфоне не прерывается. При включении экрана браслет автоматически забирает готовый ответ и вибрирует.
 * **💬 Память контекста:** Помнит до 5 диалоговых ходов (10 сообщений) для естественного общения.
 
-### Установка (3 способа):
+### Установка (2 способа):
 
 1. **Подготовка (Мод Zepp MB7):**
    * Отвяжите браслет от *Zepp Life* / *Mi Fitness* (появится QR-код сопряжения).
@@ -224,12 +212,7 @@ mi-band7-gemini/
    * Нажмите **Run workflow**, вставьте ключ и нажмите зелёную кнопку.
    * Через ~40 секунд откройте завершённый запуск и отсканируйте появившийся **QR-код** через Zepp (*Профиль ➔ Режим разработчика ➔ Сканер QR*). Пакет скачается и установится на браслет!
 
-3. **Способ 2 (В браузере через GitHub Pages):**
-   * Откройте [веб-портал Gemini Band](https://poluprovodnik228.github.io/mi-band7-gemini/) на телефоне или ПК.
-   * Введите свой API-ключ и нажмите **Patch & Download .zpk**.
-   * Ключ вшивается прямо в браузере через JSZip без отправки на серверы. Скачанный файл установите через Zepp или Notify.
-
-4. **Способ 3 (Сборка из исходников на ПК):**
+3. **Способ 2 (Сборка из исходников на ПК):**
    * Клонируйте репозиторий, создайте `config.js` с `GEMINI_API_KEY` и выполните `zeus build`.
 
 ---

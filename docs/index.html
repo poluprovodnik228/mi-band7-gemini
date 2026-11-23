@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gemini Band — Xiaomi Smart Band 7</title>
   <link rel="icon" type="image/png" href="icon.png">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -83,28 +82,6 @@
       color: #8b949e;
       margin-bottom: 14px;
     }
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 500;
-      color: #f0f6fc;
-      margin-bottom: 6px;
-    }
-    input[type="text"] {
-      width: 100%;
-      padding: 10px 12px;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      color: #f0f6fc;
-      font-size: 13px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      margin-bottom: 12px;
-    }
-    input[type="text"]:focus {
-      outline: none;
-      border-color: #58a6ff;
-    }
     .btn {
       display: inline-block;
       width: 100%;
@@ -121,24 +98,6 @@
     }
     .btn:hover {
       background: #2ea043;
-    }
-    .btn-secondary {
-      background: #21262d;
-      color: #58a6ff;
-      border: 1px solid #30363d;
-      margin-top: 10px;
-    }
-    .btn-secondary:hover {
-      background: #30363d;
-    }
-    .security-note {
-      font-size: 12px;
-      color: #7ee787;
-      background: #0e2d1d;
-      border: 1px solid #238636;
-      border-radius: 6px;
-      padding: 10px 12px;
-      margin-top: 14px;
     }
     .steps {
       font-size: 13px;
@@ -173,11 +132,6 @@
       margin-top: 14px;
       line-height: 1.5;
     }
-    #statusMsg {
-      margin-top: 10px;
-      font-size: 13px;
-      display: none;
-    }
     a {
       color: #58a6ff;
       text-decoration: none;
@@ -205,16 +159,16 @@
 
     <!-- Method 1: Cloud 1-Click Build (GitHub Actions) -->
     <div class="card">
-      <h2>🚀 Method 1: 1-Click Cloud Build (GitHub Actions)</h2>
-      <p>The easiest and most trusted way. Build your personal installation package with your API key directly on GitHub's infrastructure with zero local setup.</p>
+      <h2>🚀 Method 1: 1-Click Cloud Build (GitHub Actions) — Recommended</h2>
+      <p>The easiest and most trusted way. Build your personal installation package with your API key directly on GitHub's secure infrastructure with zero local setup.</p>
       
       <div class="steps">
         <ol>
-          <li><b>Fork this repository</b> to your GitHub account (click the Fork button at the top right of GitHub).</li>
+          <li><b>Fork this repository</b> to your GitHub account (click the Fork button at the top right of the repo).</li>
           <li>In your fork, navigate to the <b>Actions</b> tab.</li>
           <li>Select the workflow <b>Build Personal Band Package</b> from the left sidebar.</li>
           <li>Click <b>Run workflow</b>, paste your <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a> API key, and click the green button.</li>
-          <li>Wait ~45 seconds. Open the completed run and scan the generated <b>QR code</b> directly off your screen using the Zepp app!</li>
+          <li>Wait ~40 seconds. Open the completed run and scan the generated <b>QR code</b> directly off your screen using the Zepp app!</li>
         </ol>
       </div>
 
@@ -223,24 +177,9 @@
       </a>
     </div>
 
-    <!-- Method 2: Client-Side In-Browser Patcher -->
+    <!-- Method 2: Offline Developer Build -->
     <div class="card">
-      <h2>🔒 Method 2: In-Browser Patcher (100% Client-Side)</h2>
-      <p>Configure and download a patched <code>gemini_band.zpk</code> directly in your web browser. Everything runs locally in browser memory — no data is sent to any server.</p>
-
-      <label for="apiKey">Google Gemini API Key:</label>
-      <input type="text" id="apiKey" placeholder="AIzaSy..." spellcheck="false" autocomplete="off">
-      <button class="btn" onclick="patchAndDownload()">Patch & Download .zpk</button>
-      <div id="statusMsg"></div>
-
-      <div class="security-note">
-        🛡️ <b>Client-Side Guarantee:</b> Your API key is processed exclusively inside your browser using JSZip. It never leaves your device and is not saved or transmitted anywhere.
-      </div>
-    </div>
-
-    <!-- Method 3: Offline Developer Build -->
-    <div class="card">
-      <h2>💻 Method 3: Compile from Source (Offline Zeus CLI)</h2>
+      <h2>💻 Method 2: Compile from Source (Offline Zeus CLI)</h2>
       <p>For developers who prefer compiling from source on their local machine:</p>
       
       <pre><code># 1. Clone the repository
@@ -270,67 +209,9 @@ zeus build</code></pre>
 
       <div class="alert-box">
         ⚠️ <b>Troubleshooting "Download failed (error null)":</b><br>
-        The Zepp internal downloader rejects unencrypted local HTTP addresses (<code>http://192.168.x.x</code>). Downloads must use a secure public HTTPS URL (such as GitHub Actions / GitHub Pages <code>zpkd1://...</code>).
+        The Zepp internal downloader rejects unencrypted local HTTP addresses (<code>http://192.168.x.x</code>) and HTTP 302 redirects. Downloads must use a direct public HTTPS URL (like our GitHub raw link <code>zpkd1://raw.githubusercontent.com/...</code>).
       </div>
     </div>
   </div>
-
-  <script>
-    async function patchAndDownload() {
-      const keyInput = document.getElementById('apiKey').value.trim();
-      const status = document.getElementById('statusMsg');
-      
-      if (!keyInput || keyInput.length < 10) {
-        status.style.display = 'block';
-        status.style.color = '#f85149';
-        status.textContent = 'Please enter a valid Gemini API key starting with AIzaSy...';
-        return;
-      }
-
-      status.style.display = 'block';
-      status.style.color = '#58a6ff';
-      status.textContent = 'Fetching base package and patching in browser memory...';
-
-      try {
-        const resp = await fetch('gemini_band.zpk');
-        if (!resp.ok) throw new Error('Failed to fetch gemini_band.zpk');
-        const zpkBuffer = await resp.arrayBuffer();
-
-        const outerZip = await JSZip.loadAsync(zpkBuffer);
-        const appSideFile = outerZip.file('app-side.zip');
-        if (!appSideFile) throw new Error('app-side.zip not found inside package');
-
-        const appSideBuffer = await appSideFile.async('arraybuffer');
-        const innerZip = await JSZip.loadAsync(appSideBuffer);
-        const appSideJs = innerZip.file('app-side.js');
-        if (!appSideJs) throw new Error('app-side.js not found');
-
-        let jsText = await appSideJs.async('string');
-        jsText = jsText.replace('YOUR_GEMINI_API_KEY', keyInput);
-        innerZip.file('app-side.js', jsText);
-
-        const newInnerBuffer = await innerZip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE' });
-        outerZip.file('app-side.zip', newInnerBuffer);
-
-        const finalZpkBlob = await outerZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-        
-        const downloadUrl = URL.createObjectURL(finalZpkBlob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = 'gemini_band.zpk';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
-
-        status.style.color = '#7ee787';
-        status.textContent = 'Success! gemini_band.zpk downloaded with your key embedded.';
-      } catch (err) {
-        console.error(err);
-        status.style.color = '#f85149';
-        status.textContent = 'Patching error: ' + err.message;
-      }
-    }
-  </script>
 </body>
 </html>
