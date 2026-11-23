@@ -1,140 +1,176 @@
-# 🤖 Gemini Band — AI Assistant for Xiaomi Smart Band 7
+<div align="center">
+  <img src="assets/band-7/icon.png" width="96" height="96" alt="Gemini Band Icon" />
+  <h1>Gemini Band</h1>
+  <p><b>Standalone Google Gemini AI client for Xiaomi Smart Band 7 (Zepp OS 1.0)</b></p>
+  <p>Featuring a direct on-screen keyboard, live web search grounding, notification-resilient generation, and smartphone settings UI.</p>
 
-Полнофункциональный автономный клиент **Google Gemini AI** для фитнес-браслета **Xiaomi Smart Band 7 (Zepp OS 1.0)** с экранной клавиатурой, поддержкой русского и английского алфавитов, живым веб-поиском, защитой от сбоев при уведомлениях и удобной настройкой API-ключа прямо со смартфона.
+  <p>
+    <img src="https://img.shields.io/badge/Zepp%20OS-1.0-blue?style=flat-square" alt="Zepp OS 1.0" />
+    <img src="https://img.shields.io/badge/Device-Xiaomi%20Smart%20Band%207-orange?style=flat-square" alt="Mi Band 7" />
+    <img src="https://img.shields.io/badge/AI-Google%20Gemini%204%20%7C%203.8%20%7C%203.5-brightgreen?style=flat-square" alt="Gemini Models" />
+    <img src="https://img.shields.io/badge/License-MIT-purple?style=flat-square" alt="MIT License" />
+  </p>
 
----
+  ---
 
-## ✨ Возможности
+  ### 📲 Instant QR Code Installation
 
-* **Экранная клавиатура без Т9 (Direct Paginated Keyboard):**
-  * **Русский алфавит:** Все **33 буквы** на 3 эргономичных страницах (сетка 3×4, крупные клавиши 54×45 px).
-  * **Английский алфавит:** 26 букв на 3 страницах.
-  * **Цифры и символы (`123`):** Отдельная вкладка для цифр и знаков.
-  * **Переключение регистра (`caps` / `CAPS`):** Быстрый ввод заглавных и строчных букв.
-  * **Навигация:** Вкладки групп букв (`[а-л]`, `[м-ч]`, `[ш-я]`, `[123]`) + поддержка свайпов.
-  * **Адаптивный автоскролл поля ввода:** Всегда виден текущий набираемый текст.
-  * **Тактильный отклик (Haptic Feedback):** Приятная вибрация на каждое нажатие.
+  <p>Scan with the <b>Zepp App ➔ Developer Mode ➔ QR Code Scanner</b> to install directly onto your band via Bluetooth:</p>
 
-* **Выбор моделей Gemini и рассуждения (Thinking Budget):**
-  * **🧠 Gemini 4 Hydrogen:** Продвинутая модель для логики, математики, кода и глубоких ответов.
-  * **⚡ Gemini 3.8 Flash:** Сбалансированная модель для быстрых и точных ответов.
-  * **💡 Gemini 3.5 Flash-Lite:** Ультрабыстрые ответы (< 1 сек) для фактов, дат и определений.
-  * **Тумблер рассуждений (`[Think ON/OFF]`):** Увеличенный бюджет мыслей (2048 токенов) или быстрый ответ (512 токенов).
+  <img src="assets/qr_install.png" width="220" height="220" alt="Install QR Code" />
 
-* **🌐 Поиск в интернете в реальном времени (Web Grounding):**
-  * Тумблер `[Web ON/OFF]`.
-  * Автоматический подсос свежих фактов, курсов валют/крипты, новостей и погоды через легковесный поиск DuckDuckGo Lite.
-  * Бесплатно, без капчи и без сторонних платных поисковых API.
+  ```text
+  zpkd1://github.com/poluprovodnik228/mi-band7-gemini/releases/latest/download/gemini_band.zpk
+  ```
+  <sub>Pre-compiled packages are also available in <a href="https://github.com/poluprovodnik228/mi-band7-gemini/releases">GitHub Releases</a>.</sub>
 
-* **🔔 Защита от сброса при системных уведомлениях:**
-  * Если во время размышлений ИИ на браслет пришло уведомление, звонок или экран погас — **генерация не прерывается**.
-  * Телефон продолжает выполнять запрос в фоне, а браслет автоматически забирает готовый ответ через фоновый опрос и сигнализирует вибрацией.
-
-* **⚙️ Удобный ввод API-ключа с телефона (Zepp Settings UI):**
-  * Больше не нужно редактировать код и пересобирать проект: ключ вставляется прямо в настройках приложения в Zepp на смартфоне.
-
-* **🎨 OLED Cyberpunk интерфейс:**
-  * Официальная неоновая иконка Google Gemini в HD-качестве (96×96 TGA).
-  * 100% совместимость со встроенным шрифтом Mi Band 7 — никаких квадратиков (`□`) на бэкспейсе и кнопках.
-  * Плавный вертикальный скроллинг длинных ответов.
+</div>
 
 ---
 
-## 📲 Установка для пользователей (за 3 шага)
+## ✨ Features
 
-### Шаг 1. Подготовка приложения Zepp
+* **⌨️ Direct Paginated Keyboard (Single-Tap Typing without T9):**
+  * **Russian Alphabet:** All **33 letters** distributed across 3 ergonomic pages (3×4 grid, 54×45 px keys).
+  * **English Alphabet:** 26 letters across 3 pages.
+  * **Digits & Symbols (`123`):** Dedicated page for numbers and punctuation.
+  * **Case Switcher (`caps` / `CAPS`):** Easily toggle uppercase and lowercase input.
+  * **Top Navigation Tabs:** One-tap switching between letter groups (`[а-л]`, `[м-ч]`, `[ш-я]`, `[123]`) or swipe gestures.
+  * **Smart Auto-Fit:** The text field dynamically scales font size so you always see your active typing area.
+  * **Haptic Feedback:** Discrete tactile vibration on every keypress.
 
-Для работы сетевых мини-приложений (Side-Service) на Xiaomi Smart Band 7 требуется приложение Zepp:
+* **🧠 Multi-Model AI Engine & Thinking Budget:**
+  * **Gemini 4 Hydrogen:** Google's deep reasoning model for complex queries, logic, and code.
+  * **Gemini 3.8 Flash:** Balanced model offering fast and accurate replies.
+  * **Gemini 3.5 Flash-Lite:** Ultra-fast (< 1s) responses for quick facts, dates, and translations.
+  * **Reasoning Toggle (`[Think ON/OFF]`):** Switch between extended thinking budget (2048 tokens) and rapid reply (512 tokens).
 
-1. **Отвяжите браслет** от *Zepp Life* или *Mi Fitness* (настройки браслета сбросятся до стартового QR-кода).
-2. **Установите модифицированный Zepp:**
-   * Скачайте мод **Zepp MB7** от *melianmiko* ([пост на 4PDA #122339400](https://4pda.to/forum/index.php?showtopic=797981&st=15620#entry122339400) или [гайд на mmk.pw](https://mmk.pw/posts/mi-band-7-with-zepp/)).
-   * Войдите в свой аккаунт Zepp по **Email + паролю** или через **Mi Аккаунт** (вход через Google в модах отключен).
-   * Добавьте браслет через сканирование QR-кода на экране Mi Band 7. Браслет привяжется под видом **Amazfit Band 7** (это открывает все нужные API).
-3. **Включите режим разработчика в Zepp:**
-   * В приложении Zepp перейдите: **Профиль ➔ Настройки ➔ О программе**.
-   * **Нажмите 7–8 раз подряд** на пункт с версией приложения (появится сообщение *«Вы стали разработчиком»*).
-   * Вернитесь в **Профиль ➔ Xiaomi Smart Band 7 (Amazfit Band 7)** — внизу появится пункт **«Режим разработчика»** (Developer Mode).
-   *(По желанию: после первичной привязки можно остаться на моде либо установить официальный Zepp из Google Play/App Store — привязка сохранится в облаке).*
+* **🌐 Live Web Search Grounding:**
+  * Toggle real-time web search (`[Web ON/OFF]`).
+  * Scrapes fresh facts, news, weather, and crypto/stock prices via DuckDuckGo Lite without external API fees or captchas.
 
----
+* **🔔 Notification & Screen-Off Resilience:**
+  * If an incoming phone notification arrives or the screen turns off while Gemini is generating an answer, **the request never cancels**.
+  * The companion on the smartphone continues running in the background (`activeJob` / `lastCompletedJob`), and the band automatically retrieves the finished answer via background polling and notifies you with haptic feedback.
 
-### Шаг 2. Установка Gemini Band на браслет
+* **⚙️ Zero-Code API Key Setup via Phone UI (Zepp Settings):**
+  * Enter your API key directly on your phone in the Zepp app settings. No need to edit source code or rebuild `.zab` packages.
+  * Supports free keys from [Google AI Studio](https://aistudio.google.com/) as well as [OpenRouter](https://openrouter.ai/).
 
-1. Откройте в приложении Zepp: **Профиль ➔ Браслет ➔ Режим разработчика**.
-2. Нажмите на **иконку сканера QR-кодов** в правом верхнем углу экрана.
-3. Отсканируйте установочный QR-код приложения (или установите готовый `.zpk` файл из раздела [Releases](https://github.com/poluprovodnik228/mi-band7-gemini/releases) через *Notify for Xiaomi*).
-4. Zepp автоматически загрузит приложение на браслет по Bluetooth.
-
----
-
-### Шаг 3. Ввод бесплатного API-ключа
-
-1. Получите бесплатный ключ API на [Google AI Studio](https://aistudio.google.com/) (занимает 1 минуту).
-2. В приложении Zepp на телефоне перейдите: **Профиль ➔ Браслет ➔ Установленные приложения ➔ Gemini Band**.
-3. Вставьте ваш ключ в поле **Gemini API Key**.
-4. Готово! Открывайте Gemini Band на браслете и задавайте любые вопросы.
-
-*(Опционально)*: Если вы предпочитаете OpenRouter, в настройках приложения можно включить тумблер `Use OpenRouter` и вставить ключ от OpenRouter.
+* **🖤 100% OLED Cyberpunk Interface:**
+  * Official Google Gemini neon sparkle HD icon (96×96 TGA).
+  * No square glyphs / tofu characters (`DEL`, `caps`, `Space`, `Send`, `(*) `).
+  * Smooth layer scrolling for lengthy multi-turn conversations.
 
 ---
 
-## 🛠️ Разработка и сборка из исходников
+## 📲 User Installation Guide (3 Easy Steps)
 
-Для разработчиков, желающих модифицировать приложение или собрать `.zab` пакет вручную:
+### Step 1. Prepare the Zepp App
+
+Xiaomi Smart Band 7 requires the **Zepp** app (not *Zepp Life* or *Mi Fitness*) to run apps with network access:
+
+1. **Unpair your band** from *Zepp Life* or *Mi Fitness* (the band will reset and show a pairing QR code).
+2. **Install the modified Zepp app:**
+   * Download the **Zepp MB7** mod by *melianmiko* ([4PDA Thread #122339400](https://4pda.to/forum/index.php?showtopic=797981&st=15620#entry122339400) or [Guide on mmk.pw](https://mmk.pw/posts/mi-band-7-with-zepp/)).
+   * Log into your Zepp account using **Email & Password** or **Mi Account** (Google login is disabled in modded APKs).
+   * Tap `+` and scan the QR code on your Mi Band 7. The band will pair masked as an **Amazfit Band 7** (which unlocks all Zepp OS developer and network APIs).
+3. **Enable Developer Mode in Zepp:**
+   * In Zepp, go to: **Profile ➔ Settings ➔ About**.
+   * **Tap 7–8 times** on the app version number until a message appears saying *"You are now a developer"*.
+   * Return to **Profile ➔ Xiaomi Smart Band 7 (Amazfit Band 7)** — the **Developer Mode** menu will appear at the bottom.
+   *(Optional: You can stay on the modded Zepp permanently, or reinstall the official Zepp from Google Play/App Store — the device pairing remains tied in the cloud).*
+
+---
+
+### Step 2. Install Gemini Band onto the Watch
+
+1. Open Zepp: **Profile ➔ Xiaomi Smart Band 7 ➔ Developer Mode**.
+2. Tap the **QR Code Scanner** icon in the upper-right corner.
+3. Scan the installation QR code shown at the top of this page (or download `gemini_band.zpk` from [Releases](https://github.com/poluprovodnik228/mi-band7-gemini/releases) and flash via *Notify for Xiaomi*).
+4. Zepp will automatically push and install the application onto your band via Bluetooth.
+
+---
+
+### Step 3. Configure Your Free API Key
+
+1. Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/) (takes 1 minute).
+2. Open the Zepp app on your phone:
+   > **Profile ➔ Band ➔ App Management ➔ Gemini Band**
+3. Paste your key into the **Gemini API Key** field.
+4. Done! Launch Gemini Band on your wrist and ask any question.
+
+*(Optional)* If you prefer OpenRouter, toggle `Use OpenRouter` in the app settings and paste your OpenRouter key.
+
+---
+
+## 🛠️ Development & Building from Source
+
+For developers looking to modify the source code or build the `.zab` package:
 
 ```bash
-# 1. Клонирование репозитория
+# 1. Clone the repository
 git clone https://github.com/poluprovodnik228/mi-band7-gemini.git
 cd mi-band7-gemini
 
-# 2. Установка Zeus CLI (Zepp OS SDK)
+# 2. Install Zeus CLI (Zepp OS SDK)
 npm install -g @zeppos/zeus-cli
 
-# 3. Запуск тестов
+# 3. Run test suite
 node --test test_chat_fixes.js
 
-# 4. Сборка пакета для Mi Band 7
+# 4. Build for Xiaomi Smart Band 7
 zeus build
 
-# 5. Локальный предпросмотр и генерация QR-кода
+# 5. Local preview & QR code generation
 zeus preview
 ```
 
-### Локальная раздача через туннель:
+### Local HTTP Serving with Pinggy Tunnel:
 ```bash
-# Запуск встроенного сервера раздачи .zpk
+# Start local package server
 node serve.js
 
-# Проброс через туннель Pinggy
+# Expose port 8080 via Pinggy
 ssh -p 443 -R0:localhost:8080 -o StrictHostKeyChecking=no a.pinggy.io
 
-# Генерация QR-кода
-python3 -c "import qrcode; url='zpkd1://<ТУННЕЛЬ>/gemini_band.zpk'; qr=qrcode.QRCode(border=1); qr.add_data(url); qr.make(fit=True); qr.print_ascii(invert=True)"
+# Generate installation QR code
+python3 -c "import qrcode; url='zpkd1://<TUNNEL_URL>/gemini_band.zpk'; qr=qrcode.QRCode(border=1); qr.add_data(url); qr.make(fit=True); qr.print_ascii(invert=True)"
 ```
 
 ---
 
-## 📁 Структура проекта
+## 📁 Project Structure
 
 ```text
 mi-band7-gemini/
-├── app.json               # Манифест приложения Zepp OS 1.0 (роутинг, права, экраны)
-├── app.js                 # Жизненный цикл, фоновое сохранение flash-памяти и MessageBuilder
+├── app.json               # Zepp OS 1.0 manifest (routing, permissions, targets)
+├── app.js                 # Global lifecycle, flash memory persistence & MessageBuilder
 ├── page/
-│   ├── chat.js            # Экран чата (карточки диалога, таймер, фоновый опрос)
-│   ├── keyboard.js        # Экранная клавиатура (RU 33 буквы, EN, 123, CAPS, без квадратиков)
-│   └── model_select.js    # Настройки ИИ (Hydrogen / 3.8 Flash / 3.5 Lite, Think, Web)
+│   ├── chat.js            # Main chat screen (conversation stream, timer, background polling)
+│   ├── keyboard.js        # On-screen keyboard (RU 33 letters, EN, 123, CAPS, zero tofu glyphs)
+│   └── model_select.js    # AI Model selector (Hydrogen / 3.8 Flash / 3.5 Lite, Think, Web)
 ├── setting/
-│   └── index.js           # UI настроек в приложении Zepp на телефоне (ввод API ключа)
+│   └── index.js           # Zepp mobile settings UI (API key entry on smartphone)
 ├── app-side/
-│   └── index.js           # Компаньон на смартфоне (BLE мост, Gemini API, веб-поиск DuckDuckGo)
-├── shared/                # MessageBuilder, виброотклик, хранилище, тайм-ауты
-└── assets/                # Оптимизированные HD-иконки для экрана 192x490
+│   └── index.js           # Companion service (BLE bridge, Google AI Studio, DuckDuckGo scraper)
+├── shared/                # MessageBuilder protocol, haptics, storage, timeouts
+└── assets/                # HD icons (96x96 TGA) and installation QR code
 ```
 
 ---
 
-## 📄 Лицензия
+## 🇷🇺 Краткая русская инструкция
 
-MIT License. Свободно для использования, модификации и личного пользования.
+* **Клиент Gemini AI для Mi Band 7** с полноценным экранным вводом без Т9 (33 буквы русского алфавита + EN + 123).
+* **Модели:** Gemini 4 Hydrogen, Gemini 3.8 Flash и Gemini 3.5 Flash-Lite с тумблером глубоких рассуждений (`Think ON/OFF`).
+* **🌐 Поиск в интернете:** Свежие курсы валют, новости и погода через DuckDuckGo Lite в реальном времени.
+* **🔔 Защита от сбоев:** При звонках и уведомлениях генерация ответа продолжается в фоне на смартфоне.
+* **⚙️ Ввод ключа без кода:** Ключ от [Google AI Studio](https://aistudio.google.com/) вводится прямо в приложении Zepp на телефоне.
+* **Установка:** Браслет привязывается к моду Zepp MB7 под видом Amazfit Band 7 ➔ в *«О программе»* 7 раз тапаем по версии для включения Режима разработчика ➔ сканируем QR-код вверху страницы.
+
+---
+
+## 📄 License
+
+MIT License. Open for modification and personal use.
