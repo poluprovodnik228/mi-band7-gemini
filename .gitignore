@@ -1,13 +1,19 @@
 .DS_Store
 node_modules/
 dist/
+# Ignore packages but keep base template for GitHub Pages & in-browser patcher
 *.zab
 *.zpk
 *.bin
+!docs/gemini_band.zpk
+
+# Build & summary temporary output
+public/
+step_summary.md
+
 install_qr.html
 install_qr.png
 install_qr_zab.png
-serve.js
 npm-debug.log
 yarn-debug.log*
 yarn-error.log*
@@ -15,3 +21,4 @@ yarn.lock
 package-lock.json
 .idea
 .vscode
+config.js

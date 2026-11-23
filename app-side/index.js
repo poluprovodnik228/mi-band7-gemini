@@ -8,7 +8,9 @@ const messageBuilder = new MessageBuilder()
 
 // Вставьте сюда ваш API-ключ (от Google AI Studio или OpenRouter)
 // Также ключ можно задать прямо в приложении Zepp на телефоне в настройках приложения
-const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"
+let LOCAL_KEY = null;
+try { LOCAL_KEY = require("../config.js").GEMINI_API_KEY; } catch(_) {}
+const GEMINI_API_KEY = LOCAL_KEY || "YOUR_GEMINI_API_KEY"
 
 // Если используете OpenRouter, укажите true
 const USE_OPENROUTER = false

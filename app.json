@@ -41,15 +41,15 @@
       },
       "platforms": [
         {
-          "name": "band-7",
+          "name": "amazfit-band7-nfc",
           "deviceSource": 252
         },
         {
-          "name": "band-7",
+          "name": "amazfit-band7",
           "deviceSource": 253
         },
         {
-          "name": "band-7",
+          "name": "amazfit-band7-w",
           "deviceSource": 254
         }
       ],

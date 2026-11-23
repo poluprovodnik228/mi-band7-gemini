@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini Band — Xiaomi Smart Band 7</title>
+  <link rel="icon" type="image/png" href="icon.png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d1117;
+      color: #c9d1d9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      padding: 40px 20px;
+      display: flex;
+      justify-content: center;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 640px;
+      width: 100%;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #21262d;
+    }
+    .header img {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #8b949e;
+    }
+    .badges {
+      margin-top: 6px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #8b949e;
+    }
+    .badge-primary {
+      background: #1f6feb22;
+      border-color: #1f6feb66;
+      color: #58a6ff;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .card h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f0f6fc;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card p {
+      font-size: 13px;
+      color: #8b949e;
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #f0f6fc;
+      margin-bottom: 6px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #f0f6fc;
+      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      margin-bottom: 12px;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+    .btn {
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      background: #238636;
+      color: #ffffff;
+      border: 1px solid rgba(240, 246, 252, 0.1);
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #2ea043;
+    }
+    .btn-secondary {
+      background: #21262d;
+      color: #58a6ff;
+      border: 1px solid #30363d;
+      margin-top: 10px;
+    }
+    .btn-secondary:hover {
+      background: #30363d;
+    }
+    .security-note {
+      font-size: 12px;
+      color: #7ee787;
+      background: #0e2d1d;
+      border: 1px solid #238636;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-top: 14px;
+    }
+    .steps {
+      font-size: 13px;
+      color: #c9d1d9;
+      line-height: 1.6;
+    }
+    .steps ol {
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+    .steps li {
+      margin-bottom: 6px;
+    }
+    pre {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      color: #c9d1d9;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .alert-box {
+      background: #1c1917;
+      border: 1px solid #d29922;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 12px;
+      color: #e3b341;
+      margin-top: 14px;
+      line-height: 1.5;
+    }
+    #statusMsg {
+      margin-top: 10px;
+      font-size: 13px;
+      display: none;
+    }
+    a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="icon.png" alt="Gemini Band">
+      <div>
+        <h1>Gemini Band</h1>
+        <div class="subtitle">Standalone Google Gemini AI Client for Xiaomi Smart Band 7 (Zepp OS 1.0)</div>
+        <div class="badges">
+          <span class="badge badge-primary">Zepp OS 1.0</span>
+          <span class="badge">Mi Band 7</span>
+          <span class="badge">Gemini 2.5 / 2.0 / 1.5</span>
+          <span class="badge">Open Source</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Method 1: Cloud 1-Click Build (GitHub Actions) -->
+    <div class="card">
+      <h2>🚀 Method 1: 1-Click Cloud Build (GitHub Actions)</h2>
+      <p>The easiest and most trusted way. Build your personal installation package with your API key directly on GitHub's infrastructure with zero local setup.</p>
+      
+      <div class="steps">
+        <ol>
+          <li><b>Fork this repository</b> to your GitHub account (click the Fork button at the top right of GitHub).</li>
+          <li>In your fork, navigate to the <b>Actions</b> tab.</li>
+          <li>Select the workflow <b>Build Personal Band Package</b> from the left sidebar.</li>
+          <li>Click <b>Run workflow</b>, paste your <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a> API key, and click the green button.</li>
+          <li>Wait ~45 seconds. Open the completed run and scan the generated <b>QR code</b> directly off your screen using the Zepp app!</li>
+        </ol>
+      </div>
+
+      <a href="https://github.com/poluprovodnik228/mi-band7-gemini/actions/workflows/build-personal.yml" target="_blank" class="btn">
+        Open GitHub Actions Workflow
+      </a>
+    </div>
+
+    <!-- Method 2: Client-Side In-Browser Patcher -->
+    <div class="card">
+      <h2>🔒 Method 2: In-Browser Patcher (100% Client-Side)</h2>
+      <p>Configure and download a patched <code>gemini_band.zpk</code> directly in your web browser. Everything runs locally in browser memory — no data is sent to any server.</p>
+
+      <label for="apiKey">Google Gemini API Key:</label>
+      <input type="text" id="apiKey" placeholder="AIzaSy..." spellcheck="false" autocomplete="off">
+      <button class="btn" onclick="patchAndDownload()">Patch & Download .zpk</button>
+      <div id="statusMsg"></div>
+
+      <div class="security-note">
+        🛡️ <b>Client-Side Guarantee:</b> Your API key is processed exclusively inside your browser using JSZip. It never leaves your device and is not saved or transmitted anywhere.
+      </div>
+    </div>
+
+    <!-- Method 3: Offline Developer Build -->
+    <div class="card">
+      <h2>💻 Method 3: Compile from Source (Offline Zeus CLI)</h2>
+      <p>For developers who prefer compiling from source on their local machine:</p>
+      
+      <pre><code># 1. Clone the repository
+git clone https://github.com/poluprovodnik228/mi-band7-gemini.git
+cd mi-band7-gemini
+
+# 2. Install Zeus CLI
+npm install -g @zeppos/zeus-cli
+
+# 3. Create config.js with your API key
+echo "module.exports = { GEMINI_API_KEY: 'AIzaSyYourKeyHere' };" > config.js
+
+# 4. Build .zab and .zpk
+zeus build</code></pre>
+    </div>
+
+    <!-- Setup Guide: Zepp MB7 & Developer Mode -->
+    <div class="card">
+      <h2>📲 Zepp App & Developer Mode Setup</h2>
+      <div class="steps">
+        <ol>
+          <li><b>Pair via Zepp MB7 mod:</b> Unpair Band 7 from Zepp Life / Mi Fitness. Install the <b>Zepp MB7</b> mod and pair the band (it will pair masked as <i>Amazfit Band 7</i>, unlocking full network & developer APIs).</li>
+          <li><b>Enable Developer Mode:</b> In Zepp, go to <b>Profile ➔ Settings ➔ About</b> and tap the version number <b>7 times</b>.</li>
+          <li><b>Install:</b> Return to <b>Profile ➔ Amazfit Band 7 ➔ Developer Mode</b>, tap the QR scanner icon in the top right, and scan the QR code.</li>
+        </ol>
+      </div>
+
+      <div class="alert-box">
+        ⚠️ <b>Troubleshooting "Download failed (error null)":</b><br>
+        The Zepp internal downloader rejects unencrypted local HTTP addresses (<code>http://192.168.x.x</code>). Downloads must use a secure public HTTPS URL (such as GitHub Actions / GitHub Pages <code>zpkd1://...</code>).
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function patchAndDownload() {
+      const keyInput = document.getElementById('apiKey').value.trim();
+      const status = document.getElementById('statusMsg');
+      
+      if (!keyInput || keyInput.length < 10) {
+        status.style.display = 'block';
+        status.style.color = '#f85149';
+        status.textContent = 'Please enter a valid Gemini API key starting with AIzaSy...';
+        return;
+      }
+
+      status.style.display = 'block';
+      status.style.color = '#58a6ff';
+      status.textContent = 'Fetching base package and patching in browser memory...';
+
+      try {
+        const resp = await fetch('gemini_band.zpk');
+        if (!resp.ok) throw new Error('Failed to fetch gemini_band.zpk');
+        const zpkBuffer = await resp.arrayBuffer();
+
+        const outerZip = await JSZip.loadAsync(zpkBuffer);
+        const appSideFile = outerZip.file('app-side.zip');
+        if (!appSideFile) throw new Error('app-side.zip not found inside package');
+
+        const appSideBuffer = await appSideFile.async('arraybuffer');
+        const innerZip = await JSZip.loadAsync(appSideBuffer);
+        const appSideJs = innerZip.file('app-side.js');
+        if (!appSideJs) throw new Error('app-side.js not found');
+
+        let jsText = await appSideJs.async('string');
+        jsText = jsText.replace('YOUR_GEMINI_API_KEY', keyInput);
+        innerZip.file('app-side.js', jsText);
+
+        const newInnerBuffer = await innerZip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE' });
+        outerZip.file('app-side.zip', newInnerBuffer);
+
+        const finalZpkBlob = await outerZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+        
+        const downloadUrl = URL.createObjectURL(finalZpkBlob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = 'gemini_band.zpk';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+
+        status.style.color = '#7ee787';
+        status.textContent = 'Success! gemini_band.zpk downloaded with your key embedded.';
+      } catch (err) {
+        console.error(err);
+        status.style.color = '#f85149';
+        status.textContent = 'Patching error: ' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -64,7 +64,7 @@
 
 ---
 
-## 📲 User Installation Guide (3 Easy Steps)
+## 📲 Installation Guide (3 Ways to Install)
 
 ### Step 1. Prepare the Zepp App
 
@@ -79,64 +79,74 @@ Xiaomi Smart Band 7 requires the **Zepp** app (not *Zepp Life* or *Mi Fitness*) 
    * In Zepp, go to: **Profile ➔ Settings ➔ About**.
    * **Tap 7–8 times** on the app version number until a message appears saying *"You are now a developer"*.
    * Return to **Profile ➔ Xiaomi Smart Band 7 (Amazfit Band 7)** — the **Developer Mode** menu will appear at the bottom.
-   *(Optional: You can stay on the modded Zepp permanently, or reinstall the official Zepp from Google Play/App Store — the device pairing remains tied in the cloud).*
 
 ---
 
-### Step 2. Install Gemini Band onto the Watch
+### Method 1. 1-Click Cloud Build via GitHub Actions (Recommended)
 
-1. Open Zepp: **Profile ➔ Xiaomi Smart Band 7 ➔ Developer Mode**.
-2. Tap the **QR Code Scanner** icon in the upper-right corner.
-3. Scan the installation QR code shown at the top of this page (or download `gemini_band.zpk` from [Releases](https://github.com/poluprovodnik228/mi-band7-gemini/releases) and flash via *Notify for Xiaomi*).
-4. Zepp will automatically push and install the application onto your band via Bluetooth.
-
----
-
-### Step 3. Configure Your Free API Key
+Build your personal package directly on GitHub's secure infrastructure — zero local tools needed, zero typing on the watch, and no third-party servers:
 
 1. Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/) (takes 1 minute).
-2. Open the Zepp app on your phone:
-   > **Profile ➔ Band ➔ App Management ➔ Gemini Band**
-3. Paste your key into the **Gemini API Key** field.
-4. Done! Launch Gemini Band on your wrist and ask any question.
-
-*(Optional)* If you prefer OpenRouter, toggle `Use OpenRouter` in the app settings and paste your OpenRouter key.
+2. **Fork this repository** to your GitHub account (click **Fork** in the top right).
+3. In your fork, navigate to the **Actions** tab.
+4. Select the workflow **Build Personal Band Package** from the left sidebar.
+5. Click **Run workflow**, paste your Gemini API key, and click the green button.
+6. Once the build finishes (~45 seconds), click on the completed run.
+7. Under **Summary**, you will see a personalized **QR Code** and direct install links.
+8. In the Zepp app on your phone, open **Developer Mode ➔ QR Scanner** and scan the code off your screen. The app installs automatically over Bluetooth!
 
 ---
 
-## 🛠️ Development & Building from Source
+### Method 2. In-Browser Client-Side Patcher (GitHub Pages)
 
-For developers looking to modify the source code or build the `.zab` package:
+If you prefer to download the `.zpk` file directly without running GitHub Actions:
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/poluprovodnik228/mi-band7-gemini.git
-cd mi-band7-gemini
+1. Open the [Gemini Band Web Portal](https://poluprovodnik228.github.io/mi-band7-gemini/) on your computer or phone.
+2. Paste your Google Gemini API key into the field.
+3. Click **Patch & Download .zpk**.
+4. The `.zpk` package is patched **100% in your browser's local memory** using JSZip. Your API key never leaves your device and is never sent to any server.
 
-# 2. Install Zeus CLI (Zepp OS SDK)
-npm install -g @zeppos/zeus-cli
+---
 
-# 3. Run test suite
-node --test test_chat_fixes.js
+### Method 3. Compile & Build from Source (Offline Zeus CLI)
 
-# 4. Build for Xiaomi Smart Band 7
-zeus build
+For developers who want to compile their own package locally without any web interface:
 
-# 5. Local preview & QR code generation
-zeus preview
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/poluprovodnik228/mi-band7-gemini.git
+   cd mi-band7-gemini
+   ```
+2. **Install Zeus CLI:**
+   ```bash
+   npm install -g @zeppos/zeus-cli
+   ```
+3. **Create local configuration file (`config.js`):**
+   Create `config.js` in the project root (already ignored by `.gitignore` so your key is never committed):
+   ```javascript
+   module.exports = {
+     GEMINI_API_KEY: "AIzaSyYourActualKeyFromGoogleAIStudio"
+   };
+   ```
+4. **Compile the package:**
+   ```bash
+   zeus build
+   ```
+5. **Serve and flash via QR code:**
+   ```bash
+   node serve.js
+   ```
+   Open `http://localhost:8080/gemini_band.zpk` via Zepp's Developer Mode QR scanner.
 
-### Local HTTP Serving with Pinggy Tunnel:
-```bash
-# Start local package server
-node serve.js
+---
 
-# Expose port 8080 via Pinggy
-ssh -p 443 -R0:localhost:8080 -o StrictHostKeyChecking=no a.pinggy.io
+### ⚠️ Troubleshooting: "Download failed (error null)"
 
-# Generate installation QR code
-python3 -c "import qrcode; url='zpkd1://<TUNNEL_URL>/gemini_band.zpk'; qr=qrcode.QRCode(border=1); qr.add_data(url); qr.make(fit=True); qr.print_ascii(invert=True)"
-```
+If the Zepp app shows a toast error saying `Download failed (error null)` when scanning the QR code:
+
+* **Insecure HTTP / Local IP Rejection:** Zepp's built-in Dart downloader (`Dart/3.1 (dart:io)`) strictly rejects unencrypted local IP addresses (`http://192.168.x.x`). The download link **must be a valid public HTTPS URL**.
+* **Solution:** Use **Method 1 (GitHub Actions)** or **GitHub Pages**. GitHub provides official, trusted HTTPS endpoints (`zpkd1://github.com/...` or `zpkd1://<username>.github.io/...`) which Zepp accepts and downloads immediately without errors.
+* **Local Development with Tunnel:** If you run `serve.js` locally, expose port 8080 via a secure tunnel (e.g., Cloudflare Tunnel / Pinggy HTTPS) so Zepp receives a public SSL connection.
 
 ---
 
@@ -166,8 +176,12 @@ mi-band7-gemini/
 * **Модели:** Gemini 4 Hydrogen, Gemini 3.8 Flash и Gemini 3.5 Flash-Lite с тумблером глубоких рассуждений (`Think ON/OFF`).
 * **🌐 Поиск в интернете:** Свежие курсы валют, новости и погода через DuckDuckGo Lite в реальном времени.
 * **🔔 Защита от сбоев:** При звонках и уведомлениях генерация ответа продолжается в фоне на смартфоне.
-* **⚙️ Ввод ключа без кода:** Ключ от [Google AI Studio](https://aistudio.google.com/) вводится прямо в приложении Zepp на телефоне.
-* **Установка:** Браслет привязывается к моду Zepp MB7 под видом Amazfit Band 7 ➔ в *«О программе»* 7 раз тапаем по версии для включения Режима разработчика ➔ сканируем QR-код вверху страницы.
+* **⚙️ Три способа установки с API-ключом:**
+  1. **GitHub Actions (Рекомендуется):** Форкаете репозиторий ➔ вкладка Actions ➔ запускаете *Build Personal Band Package* со своим ключом ➔ на экране появляется QR-код для Zepp. Всё собирается на серверах Microsoft/GitHub без передачи ключей сторонним сервисам.
+  2. **В браузере (GitHub Pages):** Открываете портал ➔ вводите ключ ➔ пакет собирается локально в памяти браузера через JSZip и скачивается на телефон.
+  3. **Локальная компиляция:** Zeus CLI + локальный `config.js` (`zeus build`).
+* **Установка:** Браслет привязывается к моду Zepp MB7 под видом Amazfit Band 7 ➔ в *«О программе»* 7 раз тапаем по версии для включения Режима разработчика ➔ сканируем сгенерированный QR-код.
+* **⚠️ Ошибка «Download failed (error null)»:** Zepp блокирует локальные HTTP адреса (`192.168.x.x`). Ссылки должны быть валидным HTTPS (GitHub Releases или GitHub Pages).
 
 ---
 
