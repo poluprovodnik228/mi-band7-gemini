@@ -78,6 +78,19 @@ jobs:
             "${{ github.event.repository.name }}" \
             "${{ github.repository }}"
 
+      - name: Deploy to raw GitHub build branch
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin build
+          git checkout build
+          cp dist/gemini_band.zpk gemini_band.zpk
+          cp public/qr_raw.png qr_raw.png
+          git add gemini_band.zpk qr_raw.png
+          git commit -m "build: update personal package with API key [skip ci]" || echo "No changes to commit"
+          git push origin build --force
+          git checkout main || true
+
       - name: Publish to GitHub Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

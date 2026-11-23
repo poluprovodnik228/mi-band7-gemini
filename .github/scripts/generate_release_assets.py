@@ -33,16 +33,28 @@ def main():
         shutil.copyfile("icon.png", os.path.join(public_dir, "icon.png"))
 
     # 3. Construct URLs
+    # Raw GitHub URL (direct 200 OK without 302 redirects - required by Zepp)
+    url_raw = f"zpkd1://raw.githubusercontent.com/{full_repo}/build/gemini_band.zpk"
+    http_raw = f"https://raw.githubusercontent.com/{full_repo}/build/gemini_band.zpk"
+    raw_qr_img = f"https://raw.githubusercontent.com/{full_repo}/build/qr_raw.png"
+
     # GitHub Pages:
     url_pages = f"zpkd1://{repo_owner}.github.io/{repo_name}/gemini_band.zpk"
-    # GitHub Release:
-    url_release = f"zpkd1://github.com/{full_repo}/releases/download/personal-build/gemini_band.zpk"
-    # Fallback raw / direct HTTPS
-    http_release = f"https://github.com/{full_repo}/releases/download/personal-build/gemini_band.zpk"
     http_pages = f"https://{repo_owner}.github.io/{repo_name}/gemini_band.zpk"
 
+    # GitHub Release (fallback):
+    url_release = f"zpkd1://github.com/{full_repo}/releases/download/personal-build/gemini_band.zpk"
+    http_release = f"https://github.com/{full_repo}/releases/download/personal-build/gemini_band.zpk"
+
     # 4. Generate QR code images (PNG)
-    # GitHub Release QR (standard default for releases)
+    # Direct Raw QR (the primary one that works with Zepp Dart client without 302 error null)
+    qr_raw = qrcode.QRCode(box_size=8, border=2)
+    qr_raw.add_data(url_raw)
+    qr_raw.make(fit=True)
+    img_raw = qr_raw.make_image(fill_color="black", back_color="white")
+    img_raw.save(os.path.join(public_dir, "qr_raw.png"))
+
+    # GitHub Release QR (for release assets)
     qr_rel = qrcode.QRCode(box_size=8, border=2)
     qr_rel.add_data(url_release)
     qr_rel.make(fit=True)
@@ -56,9 +68,9 @@ def main():
     img_pg = qr_pg.make_image(fill_color="black", back_color="white")
     img_pg.save(os.path.join(public_dir, "qr_pages.png"))
 
-    # 5. Generate ASCII QR Code
+    # 5. Generate ASCII QR Code (using url_raw)
     ascii_buf = io.StringIO()
-    qr_rel.print_ascii(out=ascii_buf, invert=True)
+    qr_raw.print_ascii(out=ascii_buf, invert=True)
     ascii_qr = ascii_buf.getvalue()
 
     # 6. Write public/index.html (GitHub Pages landing & installer)
@@ -242,15 +254,15 @@ Your personal package has been built with your Gemini API key and is ready to in
 Scan this QR code using **Zepp App ➔ Profile ➔ Amazfit Band 7 ➔ Developer Mode ➔ QR Scanner**:
 
 <div align="center">
-  <img src="https://github.com/{full_repo}/releases/download/personal-build/qr_release.png" width="220" height="220" alt="Zepp QR Code" />
-  <p><b>Deep Link:</b></p>
-  <code>{url_release}</code>
+  <img src="{raw_qr_img}" width="220" height="220" alt="Zepp QR Code" />
+  <p><b>Direct Link (No 302 Redirects):</b></p>
+  <code>{url_raw}</code>
 </div>
 
 ---
 
 ### 💻 Terminal ASCII QR Code
-*(If browsing from terminal or images are blocked, scan directly off your screen):*
+*(Scan directly off your screen with Zepp QR scanner):*
 
 ```text
 {ascii_qr}
@@ -259,9 +271,9 @@ Scan this QR code using **Zepp App ➔ Profile ➔ Amazfit Band 7 ➔ Developer 
 ---
 
 ### 🔗 Direct Links
-* 📦 **Download Package:** [`gemini_band.zpk` ({zpk_size_kb} KB)]({http_release})
-* 🌐 **GitHub Pages Mirror:** [{http_pages}]({http_pages})
-* 📱 **Mobile One-Tap Install:** [`{url_release}`]({url_release})
+* 📦 **Direct Raw Download:** [`gemini_band.zpk` ({zpk_size_kb} KB)]({http_raw})
+* 📱 **Mobile One-Tap Install:** [`{url_raw}`]({url_raw})
+* 🌐 **Release Asset:** [{http_release}]({http_release})
 
 > **Note:** Sideloading via Zepp Developer Mode requires the band to be paired via the **Zepp MB7 mod** (masked as Amazfit Band 7).
 """
@@ -274,7 +286,7 @@ Scan this QR code using **Zepp App ➔ Profile ➔ Amazfit Band 7 ➔ Developer 
     print("GEMINI BAND - SCAN THIS QR CODE IN ZEPP DEVELOPER MODE:")
     print("="*50 + "\n")
     print(ascii_qr)
-    print("Deep link:", url_release)
+    print("Deep link:", url_raw)
     print("="*50 + "\n")
 
 if __name__ == "__main__":
