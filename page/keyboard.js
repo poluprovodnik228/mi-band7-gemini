@@ -196,7 +196,7 @@ Page({
       this.state.keyWidgets.push(btn)
     }
 
-    // 5. Ряд управления: [ 🌐 EN ]  [ ⇧ A ]  [ ␣ Space ]  [ ⌫ ]
+    // 5. Ряд управления: [ EN ]  [ CAPS ]  [ Space ]  [ DEL ]
     const ctrlY = 334
     const ctrlH = 44
 
@@ -207,8 +207,8 @@ Page({
       w: 38,
       h: ctrlH,
       radius: 10,
-      text: '🌐EN',
-      text_size: 11,
+      text: this.state.lang,
+      text_size: 13,
       color: 0x00FFCC,
       normal_color: 0x1E2632,
       press_color: 0x334455,
@@ -216,7 +216,8 @@ Page({
         this.hapticClick()
         this.state.lang = this.state.lang === 'EN' ? 'RU' : 'EN'
         this.state.currentPage = 0
-        this.state.langWidget.setProperty(hmUI.prop.TEXT, '🌐' + this.state.lang)
+        this.state.langWidget.setProperty(hmUI.prop.TEXT, this.state.lang)
+        this.updateShiftBtn()
         this.updateTabs()
         this.updateKeys()
       }
@@ -229,8 +230,8 @@ Page({
       w: 38,
       h: ctrlH,
       radius: 10,
-      text: '⇧ A',
-      text_size: 13,
+      text: 'caps',
+      text_size: 12,
       color: 0x8899AA,
       normal_color: 0x1E2632,
       press_color: 0x0055AA,
@@ -250,8 +251,8 @@ Page({
       w: 48,
       h: ctrlH,
       radius: 10,
-      text: '␣ Space',
-      text_size: 11,
+      text: 'Space',
+      text_size: 12,
       color: 0xFFFFFF,
       normal_color: 0x1E2632,
       press_color: 0x334455,
@@ -263,15 +264,15 @@ Page({
       }
     })
 
-    // Стереть (Backspace)
+    // Стереть (Backspace / DEL)
     hmUI.createWidget(hmUI.widget.BUTTON, {
       x: 146,
       y: ctrlY,
       w: 36,
       h: ctrlH,
       radius: 10,
-      text: '⌫',
-      text_size: 18,
+      text: 'DEL',
+      text_size: 12,
       color: 0xFF6677,
       normal_color: 0x2A151B,
       press_color: 0x551111,
@@ -285,7 +286,7 @@ Page({
       }
     })
 
-    // 6. Панель действий: [ ✕ Back ]  [ ↵ Send ]
+    // 6. Панель действий: [ Back ]  [ Send ]
     const actY = 386
     const actH = 48
 
@@ -296,7 +297,7 @@ Page({
       w: 82,
       h: actH,
       radius: 24,
-      text: '✕ Back',
+      text: '< Back',
       text_size: 14,
       color: 0xAAAAAA,
       normal_color: 0x20242D,
@@ -314,7 +315,7 @@ Page({
       w: 82,
       h: actH,
       radius: 24,
-      text: '↵ Send',
+      text: 'Send',
       text_size: 14,
       color: 0xFFFFFF,
       normal_color: 0x0066FF,
@@ -383,10 +384,7 @@ Page({
   updateShiftBtn() {
     if (!this.state.shiftWidget) return
     const isUp = this.state.isUpper
-    const isRu = (this.state.lang === 'RU')
-    const char = isRu ? (isUp ? 'а' : 'А') : (isUp ? 'a' : 'A')
-    const arrow = isUp ? '⇩ ' : '⇧ '
-    this.state.shiftWidget.setProperty(hmUI.prop.TEXT, arrow + char)
+    this.state.shiftWidget.setProperty(hmUI.prop.TEXT, isUp ? 'CAPS' : 'caps')
     this.state.shiftWidget.setProperty(hmUI.prop.COLOR, isUp ? 0x00F0FF : 0x8899AA)
     this.state.shiftWidget.setProperty(hmUI.prop.NORMAL_COLOR, isUp ? 0x004488 : 0x1E2632)
   },

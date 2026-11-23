@@ -16,6 +16,7 @@ App({
     ],
     keyboardDraft: '',
     pendingQuestion: null,
+    pendingRequest: null,
     activeRequest: null,
     isClearingContext: false,
     onChatChanged: null,
@@ -26,7 +27,8 @@ App({
           keyboardDraft: this.keyboardDraft,
           selectedModel: this.selectedModel,
           enableReasoning: this.enableReasoning,
-          enableWebSearch: this.enableWebSearch
+          enableWebSearch: this.enableWebSearch,
+          pendingRequest: this.pendingRequest
         })
       } catch (_) {}
     }
@@ -52,9 +54,17 @@ App({
         if (typeof saved.enableWebSearch === 'boolean') {
           this.globalData.enableWebSearch = saved.enableWebSearch
         }
-        const lastMsg = this.globalData.chatMessages[this.globalData.chatMessages.length - 1]
-        if (lastMsg && lastMsg.role === 'model' && lastMsg.text === 'Waiting for Gemini response...') {
-          this.globalData.chatMessages.pop()
+        if (saved.pendingRequest) {
+          this.globalData.pendingRequest = saved.pendingRequest
+          this.globalData.activeRequest = {
+            id: saved.pendingRequest.id,
+            startedAt: saved.pendingRequest.startTime || Date.now()
+          }
+        } else {
+          const lastMsg = this.globalData.chatMessages[this.globalData.chatMessages.length - 1]
+          if (lastMsg && lastMsg.role === 'model' && lastMsg.text === 'Waiting for Gemini response...') {
+            this.globalData.activeRequest = { startedAt: Date.now() }
+          }
         }
         console.log('[Gemini Band] Restored state from flash storage')
       }

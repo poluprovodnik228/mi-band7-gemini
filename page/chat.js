@@ -26,13 +26,13 @@ function navigateTo(url) {
 }
 
 function getModelBadgeText(globalData) {
-  let name = '🧠 Hydrogen'
-  if (globalData.selectedModel === 'flash38') name = '⚡ 3.8 Flash'
-  else if (globalData.selectedModel === 'lite') name = '💡 3.5 Lite'
+  let name = 'Hydrogen'
+  if (globalData.selectedModel === 'flash38') name = '3.8 Flash'
+  else if (globalData.selectedModel === 'lite') name = '3.5 Lite'
 
-  const web = (globalData.enableWebSearch !== false) ? ' 🌐' : ''
-  const rsn = globalData.enableReasoning ? ' 💭' : ''
-  return `${name}${web}${rsn} ⚙️`
+  const web = (globalData.enableWebSearch !== false) ? ' +Web' : ''
+  const rsn = globalData.enableReasoning ? ' +Think' : ''
+  return `[${name}${web}${rsn}]`
 }
 
 Page({
@@ -112,7 +112,7 @@ Page({
       y: 64,
       w: 164,
       h: 20,
-      text: '🟢 Ready for question',
+      text: 'Ready for question',
       text_size: 12,
       color: 0x00FF88,
       align_h: hmUI.align.CENTER_H
@@ -165,7 +165,7 @@ Page({
       w: 160,
       h: 50,
       radius: 25,
-      text: '💬 Ask',
+      text: 'Ask',
       text_size: 16,
       color: 0xFFFFFF,
       normal_color: 0x0066FF,
@@ -232,35 +232,24 @@ Page({
       globalData.chatMessages = []
     }
 
+    const reqId = Date.now()
     // Append user question and pending model answer
-    const answer = { role: 'model', text: 'Waiting for Gemini response...' }
+    const answer = { role: 'model', text: 'Waiting for Gemini response...', reqId }
     globalData.chatMessages.push({ role: 'user', text: promptText }, answer)
+
+    const request = { id: reqId, startedAt: Date.now() }
+    globalData.pendingRequest = request
+    globalData.activeRequest = request
     if (globalData.saveAppState) globalData.saveAppState()
 
     const reqTimeout = getRequestTimeout(globalData.selectedModel)
-    const request = { startedAt: Date.now() }
-    globalData.activeRequest = request
     this.refreshUI()
-
-    const finish = (text, isError = false) => {
-      if (globalData.activeRequest !== request) return
-      globalData.activeRequest = null
-      if (this.state.isDestroyed && isError) {
-        // При прерывании уведомлением/выходом не пишем ошибку, убираем заглушку ожидания
-        const idx = globalData.chatMessages.indexOf(answer)
-        if (idx !== -1) globalData.chatMessages.splice(idx, 1)
-        if (globalData.saveAppState) globalData.saveAppState()
-        return
-      }
-      answer.text = text
-      if (globalData.saveAppState) globalData.saveAppState()
-      if (globalData.onChatChanged) globalData.onChatChanged(true)
-    }
 
     const mb = globalData.messageBuilder
     if (mb) {
       console.log('[Chat] Sending request via MessageBuilder:', promptText)
       mb.request({
+        requestId: reqId,
         prompt: promptText,
         model: globalData.selectedModel,
         reasoning: globalData.enableReasoning,
@@ -268,24 +257,50 @@ Page({
       }, { timeout: reqTimeout + BLE_GRACE_MS })
       .then((res) => {
         let ans = (res && (res.answer || res.data?.answer || res.text)) || (typeof res === 'string' ? res : 'Empty response')
-        if (res && (res.status === 'error' || res.data?.status === 'error') && !ans.startsWith('⚠️')) {
-          ans = '⚠️ ' + ans
+        if (res && (res.status === 'error' || res.data?.status === 'error') && !ans.startsWith('[!]')) {
+          ans = '[!] ' + ans
         }
-        finish(ans, false)
+        this.applyAnswer(ans, false, request)
       })
       .catch((err) => {
-        if (this.state.isDestroyed) {
-          finish('', true)
-          return
+        console.log('[Chat] Direct BLE request error or timeout:', err)
+        // If notification interrupted the band or app was destroyed:
+        // Do NOT overwrite or delete the waiting card! Polling will recover the result once phone finishes.
+        if (!this.state.isDestroyed) {
+          const isTimeout = /timeout|timed out/i.test(err && (err.message || err))
+          this.applyAnswer(isTimeout
+            ? '[!] Request timed out.\nCheck the Zepp app and phone internet.'
+            : '[!] Phone connection error.\nCheck Bluetooth and Zepp app.', true, request)
         }
-        const isTimeout = /timeout|timed out/i.test(err && (err.message || err))
-        finish(isTimeout
-          ? '⚠️ Request timed out.\nCheck the Zepp app and phone internet.'
-          : '⚠️ Phone connection error.\nCheck Bluetooth and Zepp app.', true)
       })
     } else {
-      finish('⚠️ Bridge module not initialized.', true)
+      this.applyAnswer('[!] Bridge module not initialized.', true, request)
     }
+  },
+
+  applyAnswer(text, isError = false, targetRequest = null) {
+    const app = getApp()
+    if (!app || !app.globalData) return
+    const globalData = app.globalData
+    if (!globalData.activeRequest && !globalData.pendingRequest) return
+    if (targetRequest && globalData.activeRequest !== targetRequest) return
+
+    globalData.activeRequest = null
+    globalData.pendingRequest = null
+
+    const msgs = globalData.chatMessages
+    if (Array.isArray(msgs) && msgs.length > 0) {
+      const lastMsg = msgs[msgs.length - 1]
+      if (lastMsg && lastMsg.role === 'model') {
+        lastMsg.text = text
+      } else {
+        msgs.push({ role: 'model', text })
+      }
+    }
+
+    if (globalData.saveAppState) globalData.saveAppState()
+    if (globalData.onChatChanged) globalData.onChatChanged(true)
+    this.refreshUI()
   },
 
   refreshStatus(globalData) {
@@ -293,8 +308,25 @@ Page({
     if (!widget) return
     const request = globalData.activeRequest
     const seconds = request ? Math.floor((Date.now() - request.startedAt) / 1000) : 0
-    widget.setProperty(hmUI.prop.TEXT, request ? `⏳ Thinking... (${seconds}s)` : '🟢 Ready for question')
+    widget.setProperty(hmUI.prop.TEXT, request ? `Thinking... (${seconds}s)` : 'Ready for question')
     widget.setProperty(hmUI.prop.COLOR, request ? 0xFFAA00 : 0x00FF88)
+
+    // Polling phone companion for background completion
+    if (request && seconds > 0 && seconds % 2 === 0 && globalData.messageBuilder) {
+      globalData.messageBuilder.request({
+        action: 'poll_status',
+        requestId: request.id
+      }, { timeout: 2000 })
+      .then((res) => {
+        const data = (res && res.data) ? res.data : res
+        if (data && (data.status === 'ok' || data.status === 'done') && data.answer) {
+          this.applyAnswer(data.answer, false)
+        } else if (data && data.status === 'error' && data.answer) {
+          this.applyAnswer(data.answer, true)
+        }
+      })
+      .catch(() => {})
+    }
   },
 
   refreshUI() {
@@ -334,7 +366,7 @@ Page({
         const textH = Math.max(22, estimateTextHeight(msg.text, charsPerLine, lineHeight))
         const cardH = 30 + textH + 12
 
-        const roleText = isUser ? '👤 YOU:' : (isHydrogen ? '🧠 GEMINI (Hydrogen):' : '⚡ GEMINI (Lite):')
+        const roleText = isUser ? 'YOU:' : (isHydrogen ? 'GEMINI (Hydrogen):' : 'GEMINI (Lite):')
         const roleColor = isUser ? 0x00E5FF : 0x00FF88
         const cardBgColor = isUser ? 0x141C2E : 0x101D24
         const radius = isUser ? 12 : 14

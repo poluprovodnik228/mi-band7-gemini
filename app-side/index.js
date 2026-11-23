@@ -7,11 +7,50 @@ import { getRequestTimeout, withTimeout } from '../shared/request-timeout'
 const messageBuilder = new MessageBuilder()
 
 // Вставьте сюда ваш API-ключ (от Google AI Studio или OpenRouter)
+// Также ключ можно задать прямо в приложении Zepp на телефоне в настройках приложения
 const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"
 
 // Если используете OpenRouter, укажите true
 const USE_OPENROUTER = false
 const OPENROUTER_API_KEY = "YOUR_OPENROUTER_API_KEY"
+
+function getEffectiveApiKey() {
+  try {
+    if (typeof settings !== 'undefined' && settings.settingsStorage) {
+      const stored = settings.settingsStorage.getItem('geminiApiKey')
+      if (stored && typeof stored === 'string') {
+        const trimmed = stored.trim().replace(/^"|"$/g, '')
+        if (trimmed.length > 5 && !trimmed.includes('YOUR_')) return trimmed
+      }
+    }
+  } catch (_) {}
+  return GEMINI_API_KEY
+}
+
+function getEffectiveOpenRouterKey() {
+  try {
+    if (typeof settings !== 'undefined' && settings.settingsStorage) {
+      const stored = settings.settingsStorage.getItem('openRouterApiKey')
+      if (stored && typeof stored === 'string') {
+        const trimmed = stored.trim().replace(/^"|"$/g, '')
+        if (trimmed.length > 5 && !trimmed.includes('YOUR_')) return trimmed
+      }
+    }
+  } catch (_) {}
+  return OPENROUTER_API_KEY
+}
+
+function isUseOpenRouter() {
+  try {
+    if (typeof settings !== 'undefined' && settings.settingsStorage) {
+      const stored = settings.settingsStorage.getItem('useOpenRouter')
+      if (typeof stored === 'boolean') return stored
+      if (stored === 'true') return true
+      if (stored === 'false') return false
+    }
+  } catch (_) {}
+  return USE_OPENROUTER
+}
 
 // Конфигурация таймаутов и ограничений BLE
 const WEB_SEARCH_TIMEOUT_MS = 3000
@@ -31,6 +70,8 @@ const SYSTEM_INSTRUCTION =
 // Conversation context memory (stores last 10 messages = 5 dialogue turns)
 const MAX_HISTORY_TURNS = 10
 let conversationHistory = []
+let activeJob = null
+let lastCompletedJob = null
 
 function saveToHistory(history, prompt, answer) {
   // A clear replaces the history array; requests from that conversation must not write to the new one.
@@ -309,27 +350,82 @@ AppSideService({
           return
         }
 
+        if (payload && (payload.action === 'poll_status' || payload.poll)) {
+          console.log('[Companion] Received poll_status check for requestId:', payload.requestId)
+          if (lastCompletedJob && (!payload.requestId || lastCompletedJob.id === payload.requestId)) {
+            ctx.response({
+              data: {
+                status: lastCompletedJob.status,
+                answer: lastCompletedJob.answer,
+                requestId: lastCompletedJob.id
+              }
+            })
+            return
+          }
+          if (activeJob && activeJob.status === 'thinking') {
+            ctx.response({
+              data: {
+                status: 'thinking',
+                elapsed: Math.floor((Date.now() - activeJob.startTime) / 1000),
+                requestId: activeJob.id
+              }
+            })
+            return
+          }
+          ctx.response({
+            data: {
+              status: 'idle'
+            }
+          })
+          return
+        }
+
         const prompt = payload.prompt || ''
         const modelType = payload.model || 'hydrogen'
         const enableReasoning = !!payload.reasoning
         const enableWebSearch = payload.webSearch !== false
+        const reqId = payload.requestId || Date.now()
+
+        activeJob = {
+          id: reqId,
+          prompt,
+          startTime: Date.now(),
+          status: 'thinking'
+        }
 
         try {
           const rawAnswer = await this.callGeminiAPI(prompt, modelType, enableReasoning, enableWebSearch)
           const safeAnswer = sanitizeForBLE(rawAnswer, MAX_BLE_TEXT_LENGTH)
+          lastCompletedJob = {
+            id: reqId,
+            status: 'ok',
+            answer: safeAnswer,
+            timestamp: Date.now()
+          }
+          activeJob = null
           ctx.response({
             data: {
               status: 'ok',
-              answer: safeAnswer
+              answer: safeAnswer,
+              requestId: reqId
             }
           })
         } catch (err) {
           console.error('[Companion] API Error:', err)
           const errorText = 'AI Error: ' + (err.message || 'Check network')
+          const safeError = sanitizeForBLE(errorText, MAX_BLE_TEXT_LENGTH)
+          lastCompletedJob = {
+            id: reqId,
+            status: 'error',
+            answer: safeError,
+            timestamp: Date.now()
+          }
+          activeJob = null
           ctx.response({
             data: {
               status: 'error',
-              answer: sanitizeForBLE(errorText, MAX_BLE_TEXT_LENGTH)
+              answer: safeError,
+              requestId: reqId
             }
           })
         }
@@ -390,7 +486,7 @@ AppSideService({
 
   async callGeminiAPI(prompt, modelType, enableReasoning, enableWebSearch = true) {
     const deadline = Date.now() + getRequestTimeout(modelType)
-    if (USE_OPENROUTER) {
+    if (isUseOpenRouter()) {
       return this.callOpenRouter(prompt, modelType, enableWebSearch, deadline)
     }
 
@@ -458,8 +554,9 @@ AppSideService({
       }
     }
 
+    const apiKey = getEffectiveApiKey()
     const makeUrl = (m) =>
-      `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${GEMINI_API_KEY}`
+      `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`
 
     let res = null
     let lastError = null
@@ -593,8 +690,9 @@ AppSideService({
     })
 
     const url = 'https://openrouter.ai/api/v1/chat/completions'
+    const openRouterKey = getEffectiveOpenRouterKey()
     const headers = {
-      Authorization: `Bearer ${OPENROUTER_API_KEY}`
+      Authorization: `Bearer ${openRouterKey}`
     }
 
     console.log(`[Companion] Requesting OpenRouter model: ${chosenModel} (context: ${history.length / 2} turns)`)

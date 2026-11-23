@@ -47,7 +47,7 @@ Page({
       y: 16,
       w: 168,
       h: 26,
-      text: '⚙️ AI Settings',
+      text: 'AI Settings',
       text_size: 16,
       color: 0x00F0FF,
       align_h: hmUI.align.CENTER_H
@@ -60,7 +60,7 @@ Page({
       w: 82,
       h: 46,
       radius: 12,
-      text: globalData.enableReasoning ? '💭 Think\nON' : '⚡ Think\nOFF',
+      text: globalData.enableReasoning ? 'Think\nON' : 'Think\nOFF',
       text_size: 12,
       color: globalData.enableReasoning ? 0x00FF88 : 0x8899AA,
       normal_color: 0x161C26,
@@ -72,7 +72,7 @@ Page({
         const isEnabled = globalData.enableReasoning
         this.state.reasoningBtn.setProperty(
           hmUI.prop.TEXT,
-          isEnabled ? '💭 Think\nON' : '⚡ Think\nOFF'
+          isEnabled ? 'Think\nON' : 'Think\nOFF'
         )
         this.state.reasoningBtn.setProperty(
           hmUI.prop.COLOR,
@@ -89,7 +89,7 @@ Page({
       w: 82,
       h: 46,
       radius: 12,
-      text: isWeb ? '🌐 Web\nON' : '🌐 Web\nOFF',
+      text: isWeb ? 'Web\nON' : 'Web\nOFF',
       text_size: 12,
       color: isWeb ? 0x00F0FF : 0x8899AA,
       normal_color: 0x161C26,
@@ -101,7 +101,7 @@ Page({
         const active = (globalData.enableWebSearch !== false)
         this.state.webSearchBtn.setProperty(
           hmUI.prop.TEXT,
-          active ? '🌐 Web\nON' : '🌐 Web\nOFF'
+          active ? 'Web\nON' : 'Web\nOFF'
         )
         this.state.webSearchBtn.setProperty(
           hmUI.prop.COLOR,
@@ -114,17 +114,17 @@ Page({
     const models = [
       {
         id: 'hydrogen',
-        title: '🧠 4 Hydrogen',
+        title: '4 Hydrogen',
         subtitle: 'Deep reasoning & logic'
       },
       {
         id: 'flash38',
-        title: '⚡ 3.8 Flash',
+        title: '3.8 Flash',
         subtitle: 'Latest balanced speed'
       },
       {
         id: 'lite',
-        title: '💡 3.5 Flash-Lite',
+        title: '3.5 Flash-Lite',
         subtitle: 'Fastest reply (<1.0s)'
       }
     ]
@@ -138,7 +138,7 @@ Page({
         w: 172,
         h: 64,
         radius: 13,
-        text: `${isSelected ? '◉ ' : '○ '}${m.title}\n${m.subtitle}`,
+        text: `${isSelected ? '(*) ' : '( ) '}${m.title}\n${m.subtitle}`,
         text_size: 12,
         color: isSelected ? 0x00F0FF : 0xAAAAAA,
         normal_color: isSelected ? 0x003366 : 0x141A24,
@@ -162,7 +162,7 @@ Page({
       w: 164,
       h: 42,
       radius: 14,
-      text: '🧹 Clear Context',
+      text: 'Clear Context',
       text_size: 13,
       color: 0xFFAA88,
       normal_color: 0x28181C,
@@ -180,7 +180,7 @@ Page({
       w: 164,
       h: 44,
       radius: 22,
-      text: '← Back to Chat',
+      text: '< Back to Chat',
       text_size: 15,
       color: 0xFFFFFF,
       normal_color: 0x1E2430,
@@ -208,6 +208,7 @@ Page({
     }).then(() => {
       globalData.isClearingContext = false
       globalData.activeRequest = null
+      globalData.pendingRequest = null
       globalData.pendingQuestion = null
       globalData.chatMessages = [
         { role: 'model', text: 'Context cleared. Ready for new questions.' }
@@ -228,7 +229,7 @@ Page({
       const isSelected = (globalData.selectedModel || 'hydrogen') === m.id
       const btn = this.state.modelBtns[m.id]
       if (btn) {
-        btn.setProperty(hmUI.prop.TEXT, `${isSelected ? '◉ ' : '○ '}${m.title}\n${m.subtitle}`)
+        btn.setProperty(hmUI.prop.TEXT, `${isSelected ? '(*) ' : '( ) '}${m.title}\n${m.subtitle}`)
         btn.setProperty(hmUI.prop.COLOR, isSelected ? 0x00F0FF : 0xAAAAAA)
         btn.setProperty(hmUI.prop.NORMAL_COLOR, isSelected ? 0x003366 : 0x141A24)
       }

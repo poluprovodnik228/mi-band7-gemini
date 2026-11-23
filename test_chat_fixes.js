@@ -300,7 +300,7 @@ test('chat messages and settings survive simulated app restart / notification in
   assert.equal(appInst.globalData.enableReasoning, true)
 })
 
-test('interruption on app destroy suppresses connection errors in chat', async () => {
+test('interruption on app destroy suppresses connection errors in chat and preserves query for recovery', async () => {
   const app = { globalData: { selectedModel: 'lite', chatMessages: [] } }
   let page
   const context = createContext({
@@ -327,9 +327,10 @@ test('interruption on app destroy suppresses connection errors in chat', async (
   rejectReq(new Error('BLE disconnected'))
   await flush()
 
-  // Chat does not contain error, orphaned waiting answer is removed cleanly
-  assert.equal(app.globalData.chatMessages.length, 1)
+  // Chat does not contain raw error, query is preserved so companion polling can recover answer
+  assert.equal(app.globalData.chatMessages.length, 2)
   assert.equal(app.globalData.chatMessages[0].text, 'Test question')
+  assert.equal(app.globalData.chatMessages[1].text, 'Waiting for Gemini response...')
 })
 
 test('primary model network exception triggers fallback to 3.8 Flash', async () => {

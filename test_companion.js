@@ -73,11 +73,15 @@ function sanitizeForBLE(text, maxLength = MAX_BLE_TEXT_LENGTH) {
 
 function isFallbackError(status, data) {
   const code = status || data?.error?.code
-  if (code === 404 || code === 429 || code === 503) {
+  if (code === 400 || code === 404 || code === 429 || code === 503) {
     return true
   }
   const statusStr = data?.error?.status
   if (statusStr === 'NOT_FOUND' || statusStr === 'RESOURCE_EXHAUSTED' || statusStr === 'UNAVAILABLE') {
+    return true
+  }
+  const msg = (data?.error?.message || '').toLowerCase()
+  if (msg.includes('not found') || msg.includes('quota') || msg.includes('rate limit')) {
     return true
   }
   return false
