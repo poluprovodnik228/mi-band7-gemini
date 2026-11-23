@@ -20,7 +20,7 @@
   <img src="assets/qr_install.png" width="220" height="220" alt="Install QR Code" />
 
   ```text
-  zpkd1://github.com/poluprovodnik228/mi-band7-gemini/releases/latest/download/gemini_band.zpk
+  zpkd1://cdn.jsdelivr.net/gh/poluprovodnik228/mi-band7-gemini@main/gemini_band.zpk
   ```
   <sub>Pre-compiled packages are also available in <a href="https://github.com/poluprovodnik228/mi-band7-gemini/releases">GitHub Releases</a>.</sub>
 
