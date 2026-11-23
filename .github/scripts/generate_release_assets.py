@@ -14,7 +14,7 @@ def main():
     repo_owner = sys.argv[2]
     repo_name = sys.argv[3]
     full_repo = sys.argv[4]
-    model_name = sys.argv[5] if len(sys.argv) > 5 else "gemini-2.5-flash"
+    model_name = sys.argv[5] if len(sys.argv) > 5 else "Gemini 4 Hydrogen / 3.8 Flash / 3.5 Lite"
 
     public_dir = os.path.abspath("public")
     os.makedirs(public_dir, exist_ok=True)

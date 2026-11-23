@@ -7,15 +7,6 @@ on:
         description: 'Google Gemini API Key (from aistudio.google.com)'
         required: true
         type: string
-      default_model:
-        description: 'Default AI Model'
-        required: false
-        default: 'gemini-2.5-flash'
-        type: choice
-        options:
-          - 'gemini-2.5-flash'
-          - 'gemini-2.0-flash'
-          - 'gemini-1.5-flash'
 
 permissions:
   contents: write
@@ -52,7 +43,6 @@ jobs:
       - name: Build and Patch Package
         env:
           GEMINI_API_KEY: ${{ inputs.gemini_api_key }}
-          DEFAULT_MODEL: ${{ inputs.default_model }}
         run: |
           # 1. Write config.js for local builder
           echo "module.exports = { GEMINI_API_KEY: process.env.GEMINI_API_KEY };" > config.js
@@ -86,8 +76,7 @@ jobs:
             dist/gemini_band.zpk \
             "${{ github.repository_owner }}" \
             "${{ github.event.repository.name }}" \
-            "${{ github.repository }}" \
-            "${{ inputs.default_model }}"
+            "${{ github.repository }}"
 
       - name: Publish to GitHub Releases
         env:
